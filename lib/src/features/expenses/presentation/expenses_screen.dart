@@ -210,7 +210,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               },
               icon: const Icon(CupertinoIcons.add_circled, size: 14),
               label: const Text(
-                'Add New Expance',
+                'Add New Expense',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               ),
             ),

@@ -27,12 +27,10 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   final Set<int> _selectedServiceIndexes = <int>{};
   late String _employee;
   String _paymentType = 'Cash';
-  late double _taxPercent;
 
   @override
   void initState() {
     super.initState();
-    _taxPercent = LocalTaxRateStore.taxRate;
     final activeEmployees = LocalEmployeesStore.employees
         .where((e) => e.isActive)
         .map((e) => e.fullName)
@@ -69,6 +67,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   }
 
   double get _subTotal => _selectedLines.fold(0, (sum, line) => sum + line.total);
+  double get _taxPercent => LocalTaxRateStore.taxRate;
   double get _taxAmount => (_subTotal * _taxPercent) / 100;
   double get _grandTotal => _subTotal + _taxAmount;
 

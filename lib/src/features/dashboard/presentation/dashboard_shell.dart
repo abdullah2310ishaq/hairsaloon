@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:hairsaloon/src/features/billing/presentation/billing_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expenses_screen.dart';
-import 'package:hairsaloon/src/features/appointments/presentation/appointments_screen.dart';
 import 'package:hairsaloon/src/features/settings/presentation/app_drawer.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
@@ -32,7 +31,6 @@ class _DashboardShellState extends State<DashboardShell> {
       0 => const DashboardScreen(),
       1 => const BillingScreen(),
       2 => const ExpensesScreen(),
-      3 => const AppointmentsScreen(),
       _ => const DashboardScreen(),
     };
 
@@ -82,18 +80,7 @@ class _DashboardShellState extends State<DashboardShell> {
                 CupertinoIcons.money_dollar_circle_fill,
                 color: AppColors.textPrimary,
               ),
-              itemLabel: 'Expance',
-            ),
-            BottomBarItem(
-              inActiveItem: Icon(
-                CupertinoIcons.calendar,
-                color: AppColors.textPrimary,
-              ),
-              activeItem: Icon(
-                CupertinoIcons.calendar_today,
-                color: AppColors.textPrimary,
-              ),
-              itemLabel: 'Appointment',
+              itemLabel: 'Expense',
             ),
           ],
           onTap: _onTap,

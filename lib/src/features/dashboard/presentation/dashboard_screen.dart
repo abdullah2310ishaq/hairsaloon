@@ -35,7 +35,7 @@ class DashboardScreen extends StatelessWidget {
                     return IconButton(
                       onPressed: () => Scaffold.of(context).openDrawer(),
                       icon: const Icon(CupertinoIcons.bars),
-                      color: Colors.white,
+                      color: Colors.black,
                     );
                   },
                 ),
@@ -73,12 +73,6 @@ class DashboardScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Column(
             children: [
-              _TodayAppointmentsCard(
-                countText: '05',
-                onViewAll: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.appointments),
-              ),
-              const SizedBox(height: 10),
               GridView.count(
                 crossAxisCount: 2,
                 crossAxisSpacing: 14,
@@ -117,85 +111,6 @@ class DashboardScreen extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _TodayAppointmentsCard extends StatelessWidget {
-  const _TodayAppointmentsCard({
-    required this.countText,
-    required this.onViewAll,
-  });
-
-  final String countText;
-  final VoidCallback onViewAll;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Today Appointments',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primary, width: 3),
-                        color: Colors.white,
-                      ),
-                      child: const Icon(
-                        CupertinoIcons.clock,
-                        size: 18,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      countText,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF222222),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: onViewAll,
-            icon: const Icon(CupertinoIcons.eye, size: 16),
-            label: const Text(
-              'View All',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
