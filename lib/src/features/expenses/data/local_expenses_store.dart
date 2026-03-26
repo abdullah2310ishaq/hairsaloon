@@ -34,5 +34,11 @@ class LocalExpensesStore {
 
   static void add(ExpenseItem item) => _items.insert(0, item);
 
+  static void update(ExpenseItem item) {
+    final index = _items.indexWhere((element) => element.id == item.id);
+    if (index == -1) return;
+    _items[index] = item;
+  }
+
   static void delete(String id) => _items.removeWhere((item) => item.id == id);
 }

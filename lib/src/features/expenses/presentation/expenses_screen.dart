@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/expenses/data/local_expenses_store.dart';
 import 'package:hairsaloon/src/features/expenses/domain/entities/expense_item.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/all_expenses_screen.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/expense_details_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expense_types_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
@@ -13,7 +15,7 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
-  String _statusFilter = 'All';
+  String _statusFilter = 'Paid';
 
   List<ExpenseItem> get _items => LocalExpensesStore.items;
 
@@ -41,48 +43,46 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
       body: SafeArea(
-        child: Column(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           children: [
             _buildHeader(context),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                children: [
-                  _buildTodayCard(context),
-                  const SizedBox(height: 10),
-                  _buildFilters(),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      const Text(
-                        'Recent Transactions',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => setState(() => _statusFilter = 'All'),
-                        child: const Text(
-                          'View All',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: Colors.black,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+            _buildTodayCard(context),
+            const SizedBox(height: 10),
+            _buildFilters(),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Text(
+                  _statusFilter == 'Paid' ? 'Paid Transactions' : 'Unpaid Transactions',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AllExpensesScreen()),
+                    );
+                  },
+                  child: const Text(
+                    'View All',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  ListView.builder(
-                    itemCount: _filteredItems.length,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemBuilder: (context, index) {
-                      final item = _filteredItems[index];
-                      return _expenseTile(item);
-                    },
-                  ),
-                ],
-              ),
+                ),
+              ],
+            ),
+            ListView.builder(
+              itemCount: _filteredItems.length,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemBuilder: (context, index) {
+                final item = _filteredItems[index];
+                return _expenseTile(item);
+              },
             ),
           ],
         ),
@@ -94,7 +94,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return Container(
       width: double.infinity,
       color: AppColors.primary,
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 86),
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 16),
       child: Column(
         children: [
           Row(
@@ -104,14 +104,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               const Text(
                 'Expances',
                 style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
-              ),
-              const Spacer(),
-              Column(
-                children: const [
-                  Icon(CupertinoIcons.settings_solid, color: Colors.black, size: 22),
-                  SizedBox(height: 2),
-                  Text('Settings', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w500)),
-                ],
               ),
             ],
           ),
@@ -131,62 +123,57 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildTodayCard(BuildContext context) {
-    return Transform.translate(
-      offset: const Offset(0, -70),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            const Text('Today Expances', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 2),
-            Text(
-              'Rs.${_todayTotal.toStringAsFixed(0)}',
-              style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 36,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () async {
-                  final created = await Navigator.of(context).push<ExpenseItem>(
-                    MaterialPageRoute(builder: (_) => const ExpenseTypesScreen()),
-                  );
-                  if (created == null) return;
-                  setState(() => LocalExpensesStore.add(created));
-                },
-                icon: const Icon(CupertinoIcons.add_circled, size: 14),
-                label: const Text(
-                  'Add New Expance',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                ),
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          const Text('Today Expances', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 2),
+          Text(
+            'Rs.${_todayTotal.toStringAsFixed(0)}',
+            style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 36,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                final created = await Navigator.of(context).push<ExpenseItem>(
+                  MaterialPageRoute(builder: (_) => const ExpenseTypesScreen()),
+                );
+                if (created == null) return;
+                setState(() => LocalExpensesStore.add(created));
+              },
+              icon: const Icon(CupertinoIcons.add_circled, size: 14),
+              label: const Text(
+                'Add New Expance',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildFilters() {
-    return Transform.translate(
-      offset: const Offset(0, -64),
-      child: Row(
-        children: [
-          _filterChip('Paid'),
-          const SizedBox(width: 8),
-          _filterChip('Unpaid'),
-        ],
-      ),
+    return Row(
+      children: [
+        _filterChip('Paid'),
+        const SizedBox(width: 8),
+        _filterChip('Unpaid'),
+      ],
     );
   }
 
@@ -225,7 +212,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final time = '${item.createdAt.hour.toString().padLeft(2, '0')}:'
         '${item.createdAt.minute.toString().padLeft(2, '0')}';
 
-    return Container(
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => ExpenseDetailsScreen(item: item)),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -279,13 +273,33 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           ),
           const SizedBox(width: 8),
           IconButton(
-            onPressed: () => setState(() => LocalExpensesStore.delete(item.id)),
+            onPressed: () async {
+              final shouldDelete = await showDialog<bool>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('Delete Expense'),
+                  content: const Text('Are you sure you want to delete this expense?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+              if (shouldDelete != true) return;
+              setState(() => LocalExpensesStore.delete(item.id));
+            },
             icon: const Icon(CupertinoIcons.delete, color: Color(0xFFE45A5A), size: 18),
             splashRadius: 16,
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

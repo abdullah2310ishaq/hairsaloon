@@ -36,72 +36,100 @@ class _DashboardShellState extends State<DashboardShell> {
       _ => const DashboardScreen(),
     };
 
-    return Scaffold(
-      extendBody: true,
-      drawer: const AppDrawer(),
-      body: body,
-      bottomNavigationBar: AnimatedNotchBottomBar(
-        notchBottomBarController: _notchController,
-        color: const Color(0xFFF7FFDF),
-        showLabel: true,
-        removeMargins: true,
-        notchColor: AppColors.primary,
-        kBottomRadius: 0,
-        kIconSize: 18,
-        bottomBarItems: const [
-          BottomBarItem(
-            inActiveItem: Icon(
-              CupertinoIcons.house,
-              color: AppColors.textPrimary,
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        extendBody: true,
+        drawer: const AppDrawer(),
+        body: body,
+        bottomNavigationBar: AnimatedNotchBottomBar(
+          notchBottomBarController: _notchController,
+          color: const Color(0xFFF7FFDF),
+          showLabel: true,
+          removeMargins: true,
+          notchColor: AppColors.primary,
+          kBottomRadius: 0,
+          kIconSize: 18,
+          bottomBarItems: const [
+            BottomBarItem(
+              inActiveItem: Icon(
+                CupertinoIcons.house,
+                color: AppColors.textPrimary,
+              ),
+              activeItem: Icon(
+                CupertinoIcons.house_fill,
+                color: AppColors.textPrimary,
+              ),
+              itemLabel: 'Home',
             ),
-            activeItem: Icon(
-              CupertinoIcons.house_fill,
-              color: AppColors.textPrimary,
+            BottomBarItem(
+              inActiveItem: Icon(
+                CupertinoIcons.doc_plaintext,
+                color: AppColors.textPrimary,
+              ),
+              activeItem: Icon(
+                CupertinoIcons.doc_text_fill,
+                color: AppColors.textPrimary,
+              ),
+              itemLabel: 'Billing',
             ),
-            itemLabel: 'Home',
+            BottomBarItem(
+              inActiveItem: Icon(
+                CupertinoIcons.money_dollar_circle,
+                color: AppColors.textPrimary,
+              ),
+              activeItem: Icon(
+                CupertinoIcons.money_dollar_circle_fill,
+                color: AppColors.textPrimary,
+              ),
+              itemLabel: 'Expance',
+            ),
+            BottomBarItem(
+              inActiveItem: Icon(
+                CupertinoIcons.calendar,
+                color: AppColors.textPrimary,
+              ),
+              activeItem: Icon(
+                CupertinoIcons.calendar_today,
+                color: AppColors.textPrimary,
+              ),
+              itemLabel: 'Appointment',
+            ),
+          ],
+          onTap: _onTap,
+          itemLabelStyle: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
           ),
-          BottomBarItem(
-            inActiveItem: Icon(
-              CupertinoIcons.doc_plaintext,
-              color: AppColors.textPrimary,
-            ),
-            activeItem: Icon(
-              CupertinoIcons.doc_text_fill,
-              color: AppColors.textPrimary,
-            ),
-            itemLabel: 'Billing',
-          ),
-          BottomBarItem(
-            inActiveItem: Icon(
-              CupertinoIcons.money_dollar_circle,
-              color: AppColors.textPrimary,
-            ),
-            activeItem: Icon(
-              CupertinoIcons.money_dollar_circle_fill,
-              color: AppColors.textPrimary,
-            ),
-            itemLabel: 'Expance',
-          ),
-          BottomBarItem(
-            inActiveItem: Icon(
-              CupertinoIcons.calendar,
-              color: AppColors.textPrimary,
-            ),
-            activeItem: Icon(
-              CupertinoIcons.calendar_today,
-              color: AppColors.textPrimary,
-            ),
-            itemLabel: 'Appointment',
-          ),
-        ],
-        onTap: _onTap,
-        itemLabelStyle: const TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
         ),
       ),
     );
+  }
+
+  Future<bool> _onWillPop() async {
+    if (_currentIndex != 0) {
+      setState(() => _currentIndex = 0);
+      return false;
+    }
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Exit App'),
+        content: const Text('Are you sure you want to exit the app?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    );
+    return shouldExit == true;
   }
 }
 
