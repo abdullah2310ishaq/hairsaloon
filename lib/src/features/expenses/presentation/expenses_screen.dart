@@ -47,7 +47,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
         children: [
           _buildHeaderWithTodayCard(context),
-          const SizedBox(height: 74),
+          const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: _buildFilters(),
@@ -105,55 +105,65 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildHeaderWithTodayCard(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.zero,
+    final topInset = MediaQuery.of(context).padding.top;
+    const overlapHeight = 86.0;
+    final yellowHeight = topInset + 220;
+
+    return SizedBox(
+      height: yellowHeight + overlapHeight,
       child: Stack(
-        clipBehavior: Clip.none,
         children: [
-          Container(
-            width: double.infinity,
-            color: AppColors.primary,
-            padding: EdgeInsets.fromLTRB(
-              12,
-              MediaQuery.of(context).padding.top + 6,
-              12,
-              72,
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    const Icon(CupertinoIcons.back, color: Colors.black),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Expances',
-                      style: TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w700,
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: yellowHeight,
+            child: Container(
+              color: AppColors.primary,
+              padding: EdgeInsets.fromLTRB(12, topInset + 6, 12, 22),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      // const Icon(CupertinoIcons.back, color: Colors.black),
+                      // const SizedBox(width: 8),
+                      const Expanded(
+                        child: Center(
+                          child: Text(
+                            'Expenses',
+                            style: TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Total Monthly Expances',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Rs.${_monthlyTotal.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontSize: 42,
-                    fontWeight: FontWeight.w800,
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 28),
+                  const Text(
+                    'Total Monthly Expenses',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Rs.${_monthlyTotal.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 42,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           Positioned(
             left: 12,
             right: 12,
-            bottom: -56,
+            top: yellowHeight - overlapHeight,
             child: _buildTodayCard(context),
           ),
         ],
@@ -172,7 +182,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       child: Column(
         children: [
           const Text(
-            'Today Expances',
+            'Today Expenses',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 2),

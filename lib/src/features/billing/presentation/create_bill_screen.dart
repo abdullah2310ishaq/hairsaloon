@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
+import 'package:hairsaloon/src/features/employees/data/local_employees_store.dart';
+import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/features/services/data/local_services_store.dart';
 import 'package:hairsaloon/src/features/settings/data/local_tax_rate_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
@@ -23,7 +25,7 @@ class CreateBillScreen extends StatefulWidget {
 class _CreateBillScreenState extends State<CreateBillScreen> {
   late final Map<int, TextEditingController> _amountControllers;
   final Set<int> _selectedServiceIndexes = <int>{};
-  String _employee = 'Staff 1';
+  late String _employee;
   String _paymentType = 'Cash';
   late double _taxPercent;
 
@@ -31,6 +33,12 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   void initState() {
     super.initState();
     _taxPercent = LocalTaxRateStore.taxRate;
+    final activeEmployees = LocalEmployeesStore.employees
+        .where((e) => e.isActive)
+        .map((e) => e.fullName)
+        .where((name) => name.isNotEmpty)
+        .toList();
+    _employee = activeEmployees.isNotEmpty ? activeEmployees.first : 'Unassigned';
     final services = LocalServicesStore.services;
     _amountControllers = {
       for (int i = 0; i < services.length; i++)
@@ -67,6 +75,17 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   @override
   Widget build(BuildContext context) {
     final services = LocalServicesStore.services;
+    final employeeOptions = LocalEmployeesStore.employees
+        .where((e) => e.isActive)
+        .map((e) => e.fullName)
+        .where((name) => name.isNotEmpty)
+        .toList();
+    if (employeeOptions.isEmpty) {
+      employeeOptions.add('Unassigned');
+    }
+    if (!employeeOptions.contains(_employee)) {
+      _employee = employeeOptions.first;
+    }
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
       appBar: AppBar(
@@ -120,7 +139,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                   initialValue: _employee,
                   style: const TextStyle(fontSize: 12, color: Colors.black),
                   decoration: _smallDecoration('Select Employee'),
-                  items: const ['Staff 1', 'Staff 2']
+                  items: employeeOptions
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
                   onChanged: (v) => setState(() => _employee = v ?? _employee),
@@ -255,8 +274,10 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       grandTotal: _grandTotal,
     );
     LocalBillingStore.addBill(bill);
-    _showMessage('Bill saved.');
-    setState(() => _selectedServiceIndexes.clear());
+    Navigator.of(context).pushReplacementNamed(
+      AppRoutes.billDetails,
+      arguments: bill.id,
+    );
   }
 
   void _showMessage(String message) {
