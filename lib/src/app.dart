@@ -3,6 +3,7 @@ import 'package:hairsaloon/src/features/appointments/presentation/appointments_s
 import 'package:hairsaloon/src/features/auth/presentation/business_registration_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/login_screen.dart';
 import 'package:hairsaloon/src/features/business_profile/data/repositories/shared_prefs_business_profile_repository.dart';
+import 'package:hairsaloon/src/features/business_profile/domain/usecases/clear_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/get_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/save_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
@@ -28,18 +29,18 @@ class BusinessCombApp extends StatefulWidget {
 }
 
 class _BusinessCombAppState extends State<BusinessCombApp> {
-  late Future<SharedPreferences> _prefsFuture;
+  late Future<_AppBootstrap> _bootstrapFuture;
 
   @override
   void initState() {
     super.initState();
-    _prefsFuture = SharedPreferences.getInstance();
+    _bootstrapFuture = _bootstrap();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<SharedPreferences>(
-      future: _prefsFuture,
+    return FutureBuilder<_AppBootstrap>(
+      future: _bootstrapFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _loadingApp();
@@ -49,20 +50,13 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
           return _errorApp(snapshot.error);
         }
 
-        final prefs = snapshot.data;
-        if (prefs == null) {
+        final bootstrap = snapshot.data;
+        if (bootstrap == null) {
           return _loadingApp(message: 'Loading local storage...');
         }
 
-        final repository = SharedPrefsBusinessProfileRepository(prefs: prefs);
-        final notifier = BusinessProfileNotifier(
-          getBusinessProfile: GetBusinessProfile(repository),
-          saveBusinessProfile: SaveBusinessProfile(repository),
-        );
-        notifier.load(); // load saved profile (async)
-
         return BusinessProfileScope(
-          notifier: notifier,
+          notifier: bootstrap.notifier,
           child: MaterialApp(
             title: 'Business COMB',
             debugShowCheckedModeBanner: false,
@@ -70,7 +64,9 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
               colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
               useMaterial3: true,
             ),
-            initialRoute: AppRoutes.splash,
+            initialRoute: bootstrap.hasSession
+                ? AppRoutes.homeShell
+                : AppRoutes.businessRegistration,
             routes: {
               AppRoutes.splash: (_) => const SplashScreen(),
               AppRoutes.login: (_) => const LoginScreen(),
@@ -145,7 +141,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                 FilledButton(
                   onPressed: () {
                     setState(() {
-                      _prefsFuture = SharedPreferences.getInstance();
+                      _bootstrapFuture = _bootstrap();
                     });
                   },
                   child: const Text('Try Again'),
@@ -157,6 +153,31 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
       ),
     );
   }
+
+  Future<_AppBootstrap> _bootstrap() async {
+    final prefs = await SharedPreferences.getInstance();
+    final repository = SharedPrefsBusinessProfileRepository(prefs: prefs);
+    final notifier = BusinessProfileNotifier(
+      getBusinessProfile: GetBusinessProfile(repository),
+      saveBusinessProfile: SaveBusinessProfile(repository),
+      clearBusinessProfile: ClearBusinessProfile(repository),
+    );
+    await notifier.load();
+    return _AppBootstrap(
+      notifier: notifier,
+      hasSession: notifier.profile != null,
+    );
+  }
+}
+
+class _AppBootstrap {
+  const _AppBootstrap({
+    required this.notifier,
+    required this.hasSession,
+  });
+
+  final BusinessProfileNotifier notifier;
+  final bool hasSession;
 }
 
 class SplashScreen extends StatefulWidget {

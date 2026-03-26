@@ -8,13 +8,13 @@ class SharedPrefsBusinessProfileRepository
   SharedPrefsBusinessProfileRepository({required SharedPreferences prefs})
       : _prefs = prefs;
 
-  static const _profileKey = 'business_profile_v1';
+  static const storageKey = 'business_profile_v1';
 
   final SharedPreferences _prefs;
 
   @override
   Future<BusinessProfile?> getProfile() async {
-    final raw = _prefs.getString(_profileKey);
+    final raw = _prefs.getString(storageKey);
     if (raw == null || raw.trim().isEmpty) return null;
     final model = BusinessProfileModel.fromJsonString(raw);
     return model.toEntity();
@@ -23,7 +23,12 @@ class SharedPrefsBusinessProfileRepository
   @override
   Future<void> saveProfile(BusinessProfile profile) async {
     final raw = BusinessProfileModel.fromEntity(profile).toJsonString();
-    await _prefs.setString(_profileKey, raw);
+    await _prefs.setString(storageKey, raw);
+  }
+
+  @override
+  Future<void> clearProfile() async {
+    await _prefs.remove(storageKey);
   }
 }
 

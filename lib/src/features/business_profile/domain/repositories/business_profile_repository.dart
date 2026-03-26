@@ -3,5 +3,6 @@ import 'package:hairsaloon/src/features/business_profile/domain/entities/busines
 abstract class BusinessProfileRepository {
   Future<void> saveProfile(BusinessProfile profile);
   Future<BusinessProfile?> getProfile();
+  Future<void> clearProfile();
 }
 

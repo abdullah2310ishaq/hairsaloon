@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_scope.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
@@ -95,7 +96,7 @@ class AppDrawer extends StatelessWidget {
                     color: theme.dividerColor.withValues(alpha: 0.35),
                   ),
                   _DrawerItem(
-                    title: 'Category / Service List',
+                    title: 'Category List',
                     icon: CupertinoIcons.list_bullet_indent,
                     onTap: () {
                       Navigator.pop(context);
@@ -125,6 +126,20 @@ class AppDrawer extends StatelessWidget {
                     icon: CupertinoIcons.money_dollar_circle,
                     onTap: () => Navigator.pop(context),
                   ),
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: theme.dividerColor.withValues(alpha: 0.35),
+                  ),
+                  _DrawerItem(
+                    title: 'Service List',
+                    icon: CupertinoIcons.scissors,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushNamed(AppRoutes.expenseTypes);
+                    },
+                  ),
+
                   Divider(
                     height: 1,
                     thickness: 1,
@@ -253,9 +268,13 @@ class _LogoutTile extends StatelessWidget {
           );
 
           if (shouldLogout == true) {
+            await BusinessProfileScope.of(context).clear();
             Navigator.of(
               context,
-            ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
+            ).pushNamedAndRemoveUntil(
+              AppRoutes.businessRegistration,
+              (route) => false,
+            );
           }
         },
         child: Padding(
