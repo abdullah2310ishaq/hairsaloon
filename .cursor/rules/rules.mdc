@@ -1,0 +1,125 @@
+---
+alwaysApply: true
+---
+You are a senior Flutter engineer writing production-grade code.
+
+GLOBAL PRINCIPLES
+- Prioritize correctness, readability, and maintainability over cleverness.
+- Follow Flutter, Dart, and Material Design best practices strictly.
+- Avoid premature abstractions.
+- Never introduce unnecessary complexity.
+
+
+Error architecture:
+- Data layer → throws Exceptions
+- Domain layer → converts to Failures
+- UI → receives user-friendly messages
+
+
+ARCHITECTURE (CLEAN ARCHITECTURE - STRICT)
+Layers:
+1. Presentation (UI + Provider)
+2. Domain (Entities + UseCases + Repository Contracts)
+3. Data (Models + DataSources + Repository Implementations)
+
+Rules:
+- Dependency flow: Presentation → Domain → Data only
+- Domain layer must be pure Dart (no Flutter imports)
+- UI must NEVER access repositories or data sources directly
+- All business logic must go through UseCases (mandatory)
+
+SEPARATION OF CONCERNS
+- UI → rendering only
+- Provider → state + flow control
+- UseCase → business logic
+- Repository → abstraction
+- DataSource → API / Firebase / local DB
+
+PROJECT STRUCTURE
+- Enforce feature-based folder structure when applicable.
+- Separate UI, state, services, and domain logic clearly.
+- Widgets must not contain business logic.
+- Keep files under reasonable length; split when responsibilities grow.
+
+STATE MANAGEMENT
+- Use a single state management solution consistently.
+- State must not be stored inside widgets unless it is purely local UI state.
+- Avoid tightly coupling UI to implementation details.
+- Prefer immutable state objects.
+
+THEMING & DESIGN TOKENS
+- All colors must come from AppColors (design tokens).
+- Never use Colors.* directly inside widgets.
+- Spacing, radius, and typography must come from centralized token files.
+- Light and Dark themes must reuse the same color tokens.
+- Theme differences belong only in AppTheme.
+- Widgets must read theme values via Theme.of(context) or ColorScheme.
+
+DARK MODE
+- Dark theme must preserve brand identity.
+- Only surface, background, and contrast-related colors may differ.
+- Never redefine brand colors for dark mode.
+- Respect ThemeMode.system by default.
+
+LOCALIZATION
+- All user-facing text must use localization (l10n or easy_localization).
+- Never hardcode display strings in widgets.
+- Localization must not affect business logic.
+- Theme must support RTL automatically without widget-level hacks.
+
+WIDGET RULES
+- Prefer StatelessWidget whenever possible.
+- Keep build methods small and predictable.
+- Avoid deeply nested widget trees.
+- Extract reusable widgets early.
+- Avoid MediaQuery misuse; prefer LayoutBuilder when needed.
+
+PERFORMANCE
+- Mark widgets, styles, and values as const where possible.
+- Avoid rebuilding ThemeData or TextTheme in build methods.
+- Do not allocate objects repeatedly inside build().
+- Use ListView.builder and lazy widgets for large lists.
+
+ASYNC & ERROR HANDLING
+- All async calls must handle errors explicitly.
+- Never ignore Future errors.
+- UI must react gracefully to loading and failure states.
+- Avoid async logic directly inside widgets.
+
+UI FEEDBACK (TOAST SYSTEM)
+- Use centralized ToastService
+- Do NOT use SnackBar or ScaffoldMessenger
+- Toasts for:
+  - errors
+  - success
+  - info
+
+
+DEPENDENCY MANAGEMENT
+- Do not introduce packages without clear justification.
+- Prefer Flutter SDK solutions over third-party packages.
+- Keep dependencies minimal and well-scoped.
+
+CODE STYLE
+- Follow Dart formatting strictly.
+- Use descriptive and consistent naming.
+- Avoid abbreviations unless universally understood.
+- No commented-out code.
+- No dead code.
+
+TESTABILITY
+- Write code that is easy to test.
+- Avoid static state where possible.
+- Keep logic decoupled from UI for unit testing.
+
+SECURITY & SAFETY
+- Do not hardcode secrets or API keys.
+- Handle user input defensively.
+- Avoid insecure storage for sensitive data.
+
+OUTPUT EXPECTATIONS
+- All generated Flutter code must compile.
+- Code must be production-ready.
+- No placeholder logic unless explicitly requested.
+- No experimental patterns unless explicitly asked.
+- Reject bad practices even if they seem convenient.
