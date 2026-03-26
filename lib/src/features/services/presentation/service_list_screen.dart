@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/features/services/data/local_services_store.dart';
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
 import 'package:hairsaloon/src/features/services/presentation/service_details_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
@@ -12,51 +13,6 @@ class ServiceListScreen extends StatefulWidget {
 }
 
 class _ServiceListScreenState extends State<ServiceListScreen> {
-  final List<ServiceItem> _services = [
-    ServiceItem(
-      id: '1',
-      category: "Men's Grooming",
-      serviceName: 'Hair Cut',
-      gender: 'Male',
-      ageGroup: 'Adult',
-      price: 400,
-    ),
-    ServiceItem(
-      id: '2',
-      category: "Men's Grooming",
-      serviceName: 'Hair Cut',
-      gender: 'Female',
-      ageGroup: 'Adult',
-      price: 600,
-    ),
-    ServiceItem(
-      id: '3',
-      category: "Men's Grooming",
-      serviceName: 'Hair Cut',
-      gender: 'Male',
-      ageGroup: 'Child',
-      price: 800,
-    ),
-    ServiceItem(
-      id: '4',
-      category: 'Skincare & Facials',
-      serviceName: 'Facial',
-      gender: 'Female',
-      ageGroup: 'Adult',
-      price: 1500,
-    ),
-  ];
-
-  final List<String> _categories = [
-    'All',
-    "Men's Grooming",
-    'Skincare & Facials',
-    'Male',
-    'Female',
-    'Child',
-    'Women',
-  ];
-
   final _formKey = GlobalKey<FormState>();
   bool _showAddForm = false;
   String _selectedCategoryTab = 'All';
@@ -67,6 +23,8 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   String? _newGender;
   String? _newAgeGroup;
   String _newPrice = '';
+  List<ServiceItem> get _services => LocalServicesStore.services;
+  List<String> get _categories => ['All', ...LocalServicesStore.categories];
 
   List<ServiceItem> get _filteredServices {
     if (_selectedCategoryTab == 'All') return List<ServiceItem>.from(_services);
@@ -190,7 +148,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                       );
                       if (shouldDelete != true) return;
                       setState(() {
-                        _services.removeWhere((s) => s.id == item.id);
+                        LocalServicesStore.deleteService(item.id);
                       });
                     },
                   ),
@@ -380,13 +338,9 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     final category = _newCategoryCustom.isNotEmpty
         ? _newCategoryCustom
         : (_newCategoryDropdown ?? _selectedCategoryTab);
-    if (!_categories.contains(category)) {
-      _categories.add(category);
-    }
 
     setState(() {
-      _services.insert(
-        0,
+      LocalServicesStore.addService(
         ServiceItem(
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           category: category,
@@ -418,12 +372,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     if (updated == null) return;
 
     setState(() {
-      final idx = _services.indexWhere((s) => s.id == updated.id);
-      if (idx == -1) return;
-      _services[idx] = updated;
-      if (!_categories.contains(updated.category)) {
-        _categories.add(updated.category);
-      }
+      LocalServicesStore.updateService(updated);
     });
   }
 }

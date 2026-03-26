@@ -1,28 +1,411 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/router/app_routes.dart';
+import 'package:flutter/services.dart';
+import 'package:hairsaloon/src/features/employees/data/local_employees_store.dart';
+import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
+import 'package:hairsaloon/src/features/employees/presentation/employee_agreement_screen.dart';
+import 'package:hairsaloon/src/features/employees/presentation/employee_details_screen.dart';
+import 'package:hairsaloon/src/theme/app_colors.dart';
 
-class EmployeesScreen extends StatelessWidget {
+class EmployeesScreen extends StatefulWidget {
   const EmployeesScreen({super.key});
+
+  @override
+  State<EmployeesScreen> createState() => _EmployeesScreenState();
+}
+
+class _EmployeesScreenState extends State<EmployeesScreen> {
+  final _formKey = GlobalKey<FormState>();
+  bool _showAddForm = false;
+  String _statusTab = 'All';
+
+  final _firstNameCtrl = TextEditingController();
+  final _lastNameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController(text: '+92');
+  final _cnicCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
+  bool _newEmployeeActive = true;
+
+  List<EmployeeItem> get _employees => LocalEmployeesStore.employees;
+  List<EmployeeItem> get _filteredEmployees {
+    if (_statusTab == 'All') return _employees;
+    if (_statusTab == 'Active') {
+      return _employees.where((e) => e.isActive).toList(growable: false);
+    }
+    return _employees.where((e) => !e.isActive).toList(growable: false);
+  }
+
+  @override
+  void dispose() {
+    _firstNameCtrl.dispose();
+    _lastNameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _cnicCtrl.dispose();
+    _addressCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF3F3F3),
       appBar: AppBar(
-        title: const Text('Employees'),
-      ),
-      body: ListView(
-        children: [
-          const ListTile(
-            title: Text('Employees list placeholder'),
-          ),
-          ListTile(
-            title: const Text('Open Agreement'),
-            onTap: () {
-              Navigator.of(context).pushNamed(AppRoutes.employeeAgreement);
-            },
+        backgroundColor: AppColors.primary,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(CupertinoIcons.back, color: Colors.black),
+        ),
+        title: Text(
+          'Employees (${_employees.length.toString().padLeft(2, '0')})',
+          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+        ),
+        actions: [
+          IconButton(
+            onPressed: () => setState(() => _showAddForm = !_showAddForm),
+            icon: Icon(_showAddForm ? CupertinoIcons.xmark : CupertinoIcons.add),
+            color: Colors.black,
           ),
         ],
       ),
+      body: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          _buildStatusTabs(),
+          const SizedBox(height: 10),
+          if (_showAddForm) ...[
+            _addForm(),
+            const SizedBox(height: 12),
+          ],
+          ..._filteredEmployees.map(
+            (e) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          e.fullName,
+                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          e.phoneNumber,
+                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w400),
+                        ),
+                        Text(
+                          e.cnicNumber,
+                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w400),
+                        ),
+                        const SizedBox(height: 3),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: e.isActive ? const Color(0xFF46A758) : const Color(0xFFB0B0B0),
+                            ),
+                          ),
+                          child: Text(
+                            e.isActive ? 'Active' : 'Inactive',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: e.isActive ? const Color(0xFF2B7A3A) : const Color(0xFF6B6B6B),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) async {
+                      if (value == 'agreement') {
+                        final updated = await Navigator.of(context).push<EmployeeItem>(
+                          MaterialPageRoute(
+                            builder: (_) => EmployeeAgreementScreen(employee: e),
+                          ),
+                        );
+                        if (updated == null) return;
+                        setState(() => LocalEmployeesStore.update(updated));
+                        return;
+                      }
+                      if (value == 'edit') {
+                        final updated = await Navigator.of(context).push<EmployeeItem>(
+                          MaterialPageRoute(
+                            builder: (_) => EmployeeDetailsScreen(item: e),
+                          ),
+                        );
+                        if (updated == null) return;
+                        setState(() => LocalEmployeesStore.update(updated));
+                        return;
+                      }
+                      if (value == 'delete') {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (dContext) => AlertDialog(
+                            title: const Text('Delete Employee'),
+                            content: Text('Delete ${e.fullName}?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(dContext).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.of(dContext).pop(true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm != true) return;
+                        setState(() => LocalEmployeesStore.delete(e.id));
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: 'agreement', child: Text('Agreement')),
+                      PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
+                    icon: const Icon(CupertinoIcons.ellipsis_vertical),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _addForm() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Add Employee',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _field(_firstNameCtrl, 'First Name'),
+            const SizedBox(height: 8),
+            _field(_lastNameCtrl, 'Last Name'),
+            const SizedBox(height: 8),
+            _field(
+              _phoneCtrl,
+              'Phone Number',
+              keyboardType: TextInputType.phone,
+              inputFormatters: [_PhonePkFormatter()],
+            ),
+            const SizedBox(height: 8),
+            _field(
+              _cnicCtrl,
+              'CNIC Number',
+              keyboardType: TextInputType.number,
+              inputFormatters: [_CnicFormatter()],
+            ),
+            const SizedBox(height: 8),
+            _field(_addressCtrl, 'Home Address'),
+            const SizedBox(height: 8),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              activeColor: AppColors.primary,
+              title: const Text(
+                'Employee Active',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+              ),
+              value: _newEmployeeActive,
+              onChanged: (value) => setState(() => _newEmployeeActive = value),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _saveEmployee,
+                child: const Text(
+                  'Save Employee',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _field(
+    TextEditingController controller,
+    String hint, {
+    TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+      inputFormatters: inputFormatters,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+      ),
+      validator: (v) {
+        final value = (v ?? '').trim();
+        if (value.isEmpty) return 'Required';
+        if (hint == 'Phone Number') {
+          if (!_isValidPkPhone(value)) return 'Use +92 followed by 10 digits';
+        }
+        if (hint == 'CNIC Number') {
+          if (!_isValidCnic(value)) return 'Use format: 12345-1234567-1';
+        }
+        return null;
+      },
+    );
+  }
+
+  void _saveEmployee() {
+    final state = _formKey.currentState;
+    if (state == null || !state.validate()) return;
+    setState(() {
+      LocalEmployeesStore.add(
+        EmployeeItem(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          firstName: _firstNameCtrl.text.trim(),
+          lastName: _lastNameCtrl.text.trim(),
+          phoneNumber: _phoneCtrl.text.trim(),
+          cnicNumber: _cnicCtrl.text.trim(),
+          homeAddress: _addressCtrl.text.trim(),
+          isActive: _newEmployeeActive,
+        ),
+      );
+      _firstNameCtrl.clear();
+      _lastNameCtrl.clear();
+      _phoneCtrl.text = '+92';
+      _cnicCtrl.clear();
+      _addressCtrl.clear();
+      _showAddForm = false;
+      _newEmployeeActive = true;
+    });
+  }
+
+  Widget _buildStatusTabs() {
+    const tabs = ['All', 'Active', 'Inactive'];
+    return SizedBox(
+      height: 34,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: tabs.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (_, index) {
+          final tab = tabs[index];
+          final selected = tab == _statusTab;
+          return ChoiceChip(
+            label: Text(tab),
+            selected: selected,
+            selectedColor: Colors.white,
+            backgroundColor: Colors.white,
+            side: BorderSide(
+              color: selected ? AppColors.primary : Colors.grey.shade300,
+            ),
+            labelStyle: TextStyle(
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              color: Colors.black,
+            ),
+            onSelected: (_) => setState(() => _statusTab = tab),
+          );
+        },
+      ),
+    );
+  }
+
+  bool _isValidPkPhone(String value) => RegExp(r'^\+92\d{10}$').hasMatch(value);
+
+  bool _isValidCnic(String value) => RegExp(r'^\d{5}-\d{7}-\d$').hasMatch(value);
+}
+
+class _CnicFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final limited = digits.length > 13 ? digits.substring(0, 13) : digits;
+    final buffer = StringBuffer();
+    for (var i = 0; i < limited.length; i++) {
+      if (i == 5 || i == 12) buffer.write('-');
+      buffer.write(limited[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+class _PhonePkFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    final onlyDigits = text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    String afterPrefixDigits;
+    if (text.startsWith('+92')) {
+      afterPrefixDigits = text.substring(3).replaceAll(RegExp(r'[^0-9]'), '');
+    } else if (onlyDigits.startsWith('92')) {
+      afterPrefixDigits = onlyDigits.substring(2);
+    } else {
+      afterPrefixDigits = onlyDigits;
+    }
+
+    if (afterPrefixDigits.length > 10) {
+      afterPrefixDigits = afterPrefixDigits.substring(0, 10);
+    }
+
+    final formatted = '+92$afterPrefixDigits';
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

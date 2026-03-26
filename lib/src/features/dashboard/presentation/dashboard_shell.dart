@@ -47,7 +47,7 @@ class _DashboardShellState extends State<DashboardShell> {
         removeMargins: true,
         notchColor: AppColors.primary,
         kBottomRadius: 0,
-        kIconSize: 22,
+        kIconSize: 18,
         bottomBarItems: const [
           BottomBarItem(
             inActiveItem: Icon(
@@ -97,6 +97,7 @@ class _DashboardShellState extends State<DashboardShell> {
         onTap: _onTap,
         itemLabelStyle: const TextStyle(
           color: AppColors.textPrimary,
+          fontSize: 11,
           fontWeight: FontWeight.w500,
         ),
       ),
