@@ -15,9 +15,11 @@ import 'package:hairsaloon/src/features/customers/presentation/customers_screen.
 import 'package:hairsaloon/src/features/employees/presentation/employee_agreement_screen.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employees_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expense_types_screen.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/expenses_screen.dart';
 import 'package:hairsaloon/src/features/finance/presentation/employee_earnings_screen.dart';
 import 'package:hairsaloon/src/features/finance/presentation/finance_overview_screen.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
+import 'package:hairsaloon/src/features/settings/presentation/profile_settings_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/new_service_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/service_list_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
@@ -84,7 +86,9 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
               AppRoutes.financeOverview: (_) => const FinanceOverviewScreen(),
               AppRoutes.employeeEarnings: (_) => const EmployeeEarningsScreen(),
               AppRoutes.expenseTypes: (_) => const ExpenseTypesScreen(),
+              AppRoutes.expenses: (_) => const ExpensesScreen(),
               AppRoutes.customers: (_) => const CustomersScreen(),
+              AppRoutes.profileSettings: (_) => const ProfileSettingsScreen(),
               AppRoutes.savedBills: (_) => const SavedBillsScreen(),
             },
             onGenerateRoute: (settings) {

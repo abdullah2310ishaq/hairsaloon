@@ -2,11 +2,17 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_scope.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
+import 'package:hairsaloon/src/features/settings/data/local_tax_rate_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
-class AppDrawer extends StatelessWidget {
+class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
 
+  @override
+  State<AppDrawer> createState() => _AppDrawerState();
+}
+
+class _AppDrawerState extends State<AppDrawer> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -88,7 +94,10 @@ class AppDrawer extends StatelessWidget {
                   _DrawerItem(
                     title: 'Profile Settings',
                     icon: CupertinoIcons.person_crop_circle,
-                    onTap: () => Navigator.pop(context),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushNamed(AppRoutes.profileSettings);
+                    },
                   ),
                   Divider(
                     height: 1,
@@ -113,7 +122,7 @@ class AppDrawer extends StatelessWidget {
                     icon: CupertinoIcons.creditcard,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.expenseTypes);
+                      Navigator.of(context).pushNamed(AppRoutes.expenses);
                     },
                   ),
                   Divider(
@@ -136,7 +145,7 @@ class AppDrawer extends StatelessWidget {
                     icon: CupertinoIcons.scissors,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.expenseTypes);
+                      Navigator.of(context).pushNamed(AppRoutes.serviceList);
                     },
                   ),
 
@@ -148,7 +157,23 @@ class AppDrawer extends StatelessWidget {
                   _DrawerItem(
                     title: 'Tax Rate',
                     icon: CupertinoIcons.percent,
-                    onTap: () => Navigator.pop(context),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await _showTaxRateDialog(context);
+                    },
+                  ),
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: theme.dividerColor.withValues(alpha: 0.35),
+                  ),
+                  _DrawerItem(
+                    title: 'Customers',
+                    icon: CupertinoIcons.person_2,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushNamed(AppRoutes.customers);
+                    },
                   ),
                 ],
               ),
@@ -171,6 +196,43 @@ class AppDrawer extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _showTaxRateDialog(BuildContext context) async {
+    final controller = TextEditingController(
+      text: LocalTaxRateStore.taxRate.toStringAsFixed(0),
+    );
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Set Tax Rate (%)'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            hintText: 'Enter tax percentage',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = double.tryParse(controller.text.trim());
+              if (value == null || value < 0) {
+                Navigator.of(dialogContext).pop();
+                return;
+              }
+              setState(() => LocalTaxRateStore.setTaxRate(value));
+              Navigator.of(dialogContext).pop();
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }

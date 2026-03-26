@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:hairsaloon/src/features/services/data/local_services_store.dart';
+import 'package:hairsaloon/src/features/settings/data/local_tax_rate_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class CreateBillScreen extends StatefulWidget {
@@ -24,11 +25,12 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   final Set<int> _selectedServiceIndexes = <int>{};
   String _employee = 'Staff 1';
   String _paymentType = 'Cash';
-  final double _taxPercent = 17;
+  late double _taxPercent;
 
   @override
   void initState() {
     super.initState();
+    _taxPercent = LocalTaxRateStore.taxRate;
     final services = LocalServicesStore.services;
     _amountControllers = {
       for (int i = 0; i < services.length; i++)
