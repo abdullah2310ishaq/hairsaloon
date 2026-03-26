@@ -7,6 +7,8 @@ class AppRoutes {
 
   static const dashboard = '/dashboard';
   static const billing = '/billing';
+  static const savedBills = '/billing/saved';
+  static const billDetails = '/billing/details';
   static const expenses = '/expenses';
   static const appointments = '/appointments';
 
@@ -23,4 +25,3 @@ class AppRoutes {
 
   static const expenseTypes = '/expense-types';
 }
-

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/appointments/presentation/appointments_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/business_registration_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/login_screen.dart';
+import 'package:hairsaloon/src/features/billing/presentation/bill_details_screen.dart';
+import 'package:hairsaloon/src/features/billing/presentation/saved_bills_screen.dart';
 import 'package:hairsaloon/src/features/business_profile/data/repositories/shared_prefs_business_profile_repository.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/clear_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/get_business_profile.dart';
@@ -83,6 +85,17 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
               AppRoutes.employeeEarnings: (_) => const EmployeeEarningsScreen(),
               AppRoutes.expenseTypes: (_) => const ExpenseTypesScreen(),
               AppRoutes.customers: (_) => const CustomersScreen(),
+              AppRoutes.savedBills: (_) => const SavedBillsScreen(),
+            },
+            onGenerateRoute: (settings) {
+              if (settings.name == AppRoutes.billDetails) {
+                final billId = settings.arguments as String?;
+                if (billId == null) return null;
+                return MaterialPageRoute(
+                  builder: (_) => BillDetailsScreen(billId: billId),
+                );
+              }
+              return null;
             },
           ),
         );

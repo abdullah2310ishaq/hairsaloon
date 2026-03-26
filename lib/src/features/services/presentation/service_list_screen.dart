@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
+import 'package:hairsaloon/src/features/services/presentation/service_details_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class ServiceListScreen extends StatefulWidget {
@@ -46,16 +48,18 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   ];
 
   final List<String> _categories = [
+    'All',
     "Men's Grooming",
     'Skincare & Facials',
     'Male',
     'Female',
     'Child',
+    'Women',
   ];
 
   final _formKey = GlobalKey<FormState>();
   bool _showAddForm = false;
-  String _selectedCategoryTab = "Men's Grooming";
+  String _selectedCategoryTab = 'All';
 
   String? _newCategoryDropdown;
   String _newCategoryCustom = '';
@@ -64,9 +68,12 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   String? _newAgeGroup;
   String _newPrice = '';
 
-  List<ServiceItem> get _filteredServices => _services
-      .where((s) => s.category == _selectedCategoryTab)
-      .toList(growable: false);
+  List<ServiceItem> get _filteredServices {
+    if (_selectedCategoryTab == 'All') return List<ServiceItem>.from(_services);
+    return _services
+        .where((s) => s.category == _selectedCategoryTab)
+        .toList(growable: false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,10 +111,11 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
       ),
       body: Column(
         children: [
+          const SizedBox(height: 8),
           SizedBox(
-            height: 38,
+            height: 42,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               scrollDirection: Axis.horizontal,
               itemBuilder: (context, index) {
                 final category = _categories[index];
@@ -117,13 +125,13 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                   selected: selected,
                   selectedColor: Colors.white,
                   backgroundColor: const Color(0xFFF8F8F8),
+                  side: BorderSide(
+                    color: selected
+                        ? AppColors.primary
+                        : Colors.grey.withValues(alpha: 0.2),
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
-                    side: BorderSide(
-                      color: selected
-                          ? AppColors.primary
-                          : Colors.grey.withValues(alpha: 0.2),
-                    ),
                   ),
                   labelStyle: TextStyle(
                     fontSize: 12,
@@ -143,21 +151,50 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
               children: [
                 if (_showAddForm) ...[
                   _buildAddFormCard(context),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                 ],
-                ..._filteredServices.map((item) => _ServiceTile(
-                      item: item,
-                      onEdit: () => _openEditDialog(item),
-                      onDelete: () {
-                        setState(() {
-                          _services.removeWhere((s) => s.id == item.id);
-                        });
-                      },
-                    )),
+                ..._filteredServices.map(
+                  (item) => _ServiceTile(
+                    item: item,
+                    onTap: () => _openDetails(item),
+                    onEdit: () => _openDetails(item),
+                    onDelete: () async {
+                      final shouldDelete = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogContext) {
+                          return AlertDialog(
+                            title: const Text('Delete Service'),
+                            content: Text(
+                              'Are you sure you want to delete "${item.serviceName}"?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(dialogContext).pop(false);
+                                },
+                                child: const Text('Cancel'),
+                              ),
+                              FilledButton(
+                                onPressed: () {
+                                  Navigator.of(dialogContext).pop(true);
+                                },
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                      if (shouldDelete != true) return;
+                      setState(() {
+                        _services.removeWhere((s) => s.id == item.id);
+                      });
+                    },
+                  ),
+                ),
               ],
             ),
           ),
@@ -168,7 +205,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
 
   Widget _buildAddFormCard(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -180,16 +217,34 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
           children: [
             const Text(
               'New Service',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: Colors.black,
+              ),
               value: _newCategoryDropdown,
               decoration: _fieldDecoration('Select Category'),
               items: _categories
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .where((e) => e != 'All')
+                  .map(
+                    (e) => DropdownMenuItem(
+                      value: e,
+                      child: Text(
+                        e,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  )
                   .toList(),
-              onChanged: (value) => setState(() => _newCategoryDropdown = value),
+              onChanged: (value) =>
+                  setState(() => _newCategoryDropdown = value),
             ),
             const SizedBox(height: 10),
             TextFormField(
@@ -209,19 +264,51 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: Colors.black,
+              ),
               value: _newGender,
               decoration: _fieldDecoration('Select Gender'),
               items: const ['Male', 'Female', 'Other']
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .map(
+                    (e) => DropdownMenuItem(
+                      value: e,
+                      child: Text(
+                        e,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (value) => setState(() => _newGender = value),
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: Colors.black,
+              ),
               value: _newAgeGroup,
               decoration: _fieldDecoration('Select Age Group'),
               items: const ['Adult', 'Child']
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .map(
+                    (e) => DropdownMenuItem(
+                      value: e,
+                      child: Text(
+                        e,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (value) => setState(() => _newAgeGroup = value),
             ),
@@ -253,7 +340,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                 onPressed: _saveService,
                 child: const Text(
                   'Save Service',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ),
             ),
@@ -266,7 +353,11 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   InputDecoration _fieldDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey.shade500),
+      hintStyle: TextStyle(
+        color: Colors.grey.shade500,
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+      ),
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -317,198 +408,116 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     });
   }
 
-  Future<void> _openEditDialog(ServiceItem item) async {
-    final serviceCtrl = TextEditingController(text: item.serviceName);
-    final priceCtrl = TextEditingController(text: item.price.toStringAsFixed(0));
-    String category = item.category;
-    String gender = item.gender;
-    String ageGroup = item.ageGroup;
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Update Service'),
-          content: StatefulBuilder(
-            builder: (context, setLocal) {
-              return SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownButtonFormField<String>(
-                      value: category,
-                      items: _categories
-                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                          .toList(),
-                      onChanged: (v) {
-                        if (v == null) return;
-                        setLocal(() => category = v);
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(controller: serviceCtrl),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: gender,
-                      items: const ['Male', 'Female', 'Other']
-                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                          .toList(),
-                      onChanged: (v) {
-                        if (v == null) return;
-                        setLocal(() => gender = v);
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: ageGroup,
-                      items: const ['Adult', 'Child']
-                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                          .toList(),
-                      onChanged: (v) {
-                        if (v == null) return;
-                        setLocal(() => ageGroup = v);
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: priceCtrl,
-                      keyboardType: TextInputType.number,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final parsed = double.tryParse(priceCtrl.text.trim());
-                if (parsed == null || serviceCtrl.text.trim().isEmpty) return;
-                setState(() {
-                  final idx = _services.indexWhere((s) => s.id == item.id);
-                  if (idx == -1) return;
-                  _services[idx] = item.copyWith(
-                    category: category,
-                    serviceName: serviceCtrl.text.trim(),
-                    gender: gender,
-                    ageGroup: ageGroup,
-                    price: parsed,
-                  );
-                });
-                Navigator.of(context).pop();
-              },
-              child: const Text('Update'),
-            ),
-          ],
-        );
-      },
+  Future<void> _openDetails(ServiceItem item) async {
+    final updated = await Navigator.of(context).push<ServiceItem>(
+      MaterialPageRoute(
+        builder: (_) =>
+            ServiceDetailsScreen(item: item, categories: _categories),
+      ),
     );
+    if (updated == null) return;
+
+    setState(() {
+      final idx = _services.indexWhere((s) => s.id == updated.id);
+      if (idx == -1) return;
+      _services[idx] = updated;
+      if (!_categories.contains(updated.category)) {
+        _categories.add(updated.category);
+      }
+    });
   }
 }
 
 class _ServiceTile extends StatelessWidget {
   const _ServiceTile({
     required this.item,
+    required this.onTap,
     required this.onEdit,
     required this.onDelete,
   });
 
   final ServiceItem item;
+  final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
               children: [
-                Text(
-                  item.category,
-                  style: const TextStyle(fontSize: 11, color: Colors.blue),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  item.serviceName,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.category,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.serviceName,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                Text(
+                  item.gender,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  item.ageGroup,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  'Rs.${item.price.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.green,
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'edit') onEdit();
+                    if (value == 'delete') onDelete();
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit Details')),
+                    PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  ],
+                  icon: const Icon(CupertinoIcons.ellipsis_vertical),
                 ),
               ],
             ),
           ),
-          Text(item.gender),
-          const SizedBox(width: 16),
-          Text(item.ageGroup),
-          const SizedBox(width: 16),
-          Text(
-            'Rs.${item.price.toStringAsFixed(0)}',
-            style: const TextStyle(color: Colors.green),
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'edit') onEdit();
-              if (value == 'delete') onDelete();
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'edit', child: Text('Update')),
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
-            ],
-            icon: const Icon(CupertinoIcons.ellipsis_vertical),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
-
-class ServiceItem {
-  const ServiceItem({
-    required this.id,
-    required this.category,
-    required this.serviceName,
-    required this.gender,
-    required this.ageGroup,
-    required this.price,
-  });
-
-  final String id;
-  final String category;
-  final String serviceName;
-  final String gender;
-  final String ageGroup;
-  final double price;
-
-  ServiceItem copyWith({
-    String? id,
-    String? category,
-    String? serviceName,
-    String? gender,
-    String? ageGroup,
-    double? price,
-  }) {
-    return ServiceItem(
-      id: id ?? this.id,
-      category: category ?? this.category,
-      serviceName: serviceName ?? this.serviceName,
-      gender: gender ?? this.gender,
-      ageGroup: ageGroup ?? this.ageGroup,
-      price: price ?? this.price,
-    );
-  }
-}
-
