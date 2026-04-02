@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
@@ -26,7 +27,10 @@ class LoginScreen extends StatelessWidget {
             ],
           ),
         );
-        return shouldExit == true;
+        if (shouldExit == true) {
+          await SystemNavigator.pop();
+        }
+        return false;
       },
       child: Scaffold(
         body: Center(

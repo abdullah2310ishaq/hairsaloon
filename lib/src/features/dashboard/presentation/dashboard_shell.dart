@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hairsaloon/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:hairsaloon/src/features/billing/presentation/billing_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expenses_screen.dart';
@@ -15,6 +16,7 @@ class DashboardShell extends StatefulWidget {
 
 class _DashboardShellState extends State<DashboardShell> {
   int _currentIndex = 0;
+  bool _isExitDialogOpen = false;
 
   void _onTap(int index) => setState(() => _currentIndex = index);
 
@@ -54,6 +56,8 @@ class _DashboardShellState extends State<DashboardShell> {
   }
 
   Future<void> _showExitDialog() async {
+    if (_isExitDialogOpen) return;
+    _isExitDialogOpen = true;
     final shouldExit = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -95,7 +99,10 @@ class _DashboardShellState extends State<DashboardShell> {
         ],
       ),
     );
-    if (shouldExit == true && mounted) Navigator.of(context).pop();
+    _isExitDialogOpen = false;
+    if (shouldExit == true && mounted) {
+      await SystemNavigator.pop();
+    }
   }
 }
 

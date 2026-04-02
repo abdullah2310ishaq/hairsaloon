@@ -5,10 +5,7 @@ import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class EmployeeDetailsScreen extends StatefulWidget {
-  const EmployeeDetailsScreen({
-    super.key,
-    required this.item,
-  });
+  const EmployeeDetailsScreen({super.key, required this.item});
 
   final EmployeeItem item;
 
@@ -22,6 +19,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
   late final TextEditingController _phoneCtrl;
   late final TextEditingController _cnicCtrl;
   late final TextEditingController _addressCtrl;
+  late final TextEditingController _specialityCtrl;
   bool _editing = false;
   late bool _isActive;
 
@@ -33,6 +31,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     _phoneCtrl = TextEditingController(text: widget.item.phoneNumber);
     _cnicCtrl = TextEditingController(text: widget.item.cnicNumber);
     _addressCtrl = TextEditingController(text: widget.item.homeAddress);
+    _specialityCtrl = TextEditingController(text: widget.item.speciality ?? '');
     _isActive = widget.item.isActive;
   }
 
@@ -43,6 +42,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     _phoneCtrl.dispose();
     _cnicCtrl.dispose();
     _addressCtrl.dispose();
+    _specialityCtrl.dispose();
     super.dispose();
   }
 
@@ -66,7 +66,10 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
             onPressed: () => setState(() => _editing = !_editing),
             child: Text(
               _editing ? 'Cancel' : 'Edit',
-              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -93,6 +96,8 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
           ),
           const SizedBox(height: 10),
           _field(_addressCtrl, 'Home Address'),
+          const SizedBox(height: 10),
+          _field(_specialityCtrl, 'Speciality'),
           const SizedBox(height: 8),
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
@@ -103,7 +108,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
             ),
             value: _isActive,
-            onChanged: _editing ? (value) => setState(() => _isActive = value) : null,
+            onChanged: _editing
+                ? (value) => setState(() => _isActive = value)
+                : null,
           ),
           const SizedBox(height: 14),
           if (_editing)
@@ -114,7 +121,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onPressed: _save,
                 child: const Text('Save Changes'),
@@ -142,7 +151,10 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
         hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -161,6 +173,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     final phone = _phoneCtrl.text.trim();
     final cnic = _cnicCtrl.text.trim();
     final address = _addressCtrl.text.trim();
+    final speciality = _specialityCtrl.text.trim();
 
     if (first.isEmpty ||
         last.isEmpty ||
@@ -176,6 +189,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       phoneNumber: phone,
       cnicNumber: cnic,
       homeAddress: address,
+      speciality: speciality,
       isActive: _isActive,
     );
     Navigator.of(context).pop(updated);
@@ -183,7 +197,8 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
 
   bool _isValidPkPhone(String value) => RegExp(r'^\+92\d{10}$').hasMatch(value);
 
-  bool _isValidCnic(String value) => RegExp(r'^\d{5}-\d{7}-\d$').hasMatch(value);
+  bool _isValidCnic(String value) =>
+      RegExp(r'^\d{5}-\d{7}-\d$').hasMatch(value);
 }
 
 class _CnicFormatter extends TextInputFormatter {
@@ -236,4 +251,3 @@ class _PhonePkFormatter extends TextInputFormatter {
     );
   }
 }
-

@@ -24,6 +24,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   final _phoneCtrl = TextEditingController(text: '+92');
   final _cnicCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+  final _specialityCtrl = TextEditingController();
   bool _newEmployeeActive = true;
 
   List<EmployeeItem> get _employees => LocalEmployeesStore.employees;
@@ -42,6 +43,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     _phoneCtrl.dispose();
     _cnicCtrl.dispose();
     _addressCtrl.dispose();
+    _specialityCtrl.dispose();
     super.dispose();
   }
 
@@ -58,12 +60,17 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         ),
         title: Text(
           'Employees (${_employees.length.toString().padLeft(2, '0')})',
-          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         actions: [
           IconButton(
             onPressed: () => setState(() => _showAddForm = !_showAddForm),
-            icon: Icon(_showAddForm ? CupertinoIcons.xmark : CupertinoIcons.add),
+            icon: Icon(
+              _showAddForm ? CupertinoIcons.xmark : CupertinoIcons.add,
+            ),
             color: Colors.black,
           ),
         ],
@@ -73,76 +80,82 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         children: [
           _buildStatusTabs(),
           const SizedBox(height: 10),
-          if (_showAddForm) ...[
-            _addForm(),
-            const SizedBox(height: 12),
-          ],
+          if (_showAddForm) ...[_addForm(), const SizedBox(height: 12)],
           ..._filteredEmployees.map(
             (e) => Container(
               margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  _EmployeeAvatar(employeeId: e.id),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          e.fullName,
-                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          e.phoneNumber,
-                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w400),
-                        ),
-                        Text(
-                          e.cnicNumber,
-                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w400),
+                          e.speciality?.trim().isNotEmpty == true
+                              ? e.speciality!
+                              : 'General Specialist',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
                         ),
                         const SizedBox(height: 3),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: e.isActive ? const Color(0xFF46A758) : const Color(0xFFB0B0B0),
-                            ),
-                          ),
-                          child: Text(
-                            e.isActive ? 'Active' : 'Inactive',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: e.isActive ? const Color(0xFF2B7A3A) : const Color(0xFF6B6B6B),
-                            ),
+                        Text(
+                          e.fullName,
+                          style: const TextStyle(
+                            fontSize: 27 / 2,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        e.isActive ? 'Active' : 'Inactive',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: e.isActive
+                              ? Colors.black
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
                   PopupMenuButton<String>(
                     onSelected: (value) async {
                       if (value == 'agreement') {
-                        final updated = await Navigator.of(context).push<EmployeeItem>(
-                          MaterialPageRoute(
-                            builder: (_) => EmployeeAgreementScreen(employee: e),
-                          ),
-                        );
+                        final updated = await Navigator.of(context)
+                            .push<EmployeeItem>(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    EmployeeAgreementScreen(employee: e),
+                              ),
+                            );
                         if (updated == null) return;
                         setState(() => LocalEmployeesStore.update(updated));
                         return;
                       }
                       if (value == 'edit') {
-                        final updated = await Navigator.of(context).push<EmployeeItem>(
-                          MaterialPageRoute(
-                            builder: (_) => EmployeeDetailsScreen(item: e),
-                          ),
-                        );
+                        final updated = await Navigator.of(context)
+                            .push<EmployeeItem>(
+                              MaterialPageRoute(
+                                builder: (_) => EmployeeDetailsScreen(item: e),
+                              ),
+                            );
                         if (updated == null) return;
                         setState(() => LocalEmployeesStore.update(updated));
                         return;
@@ -155,11 +168,13 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                             content: Text('Delete ${e.fullName}?'),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.of(dContext).pop(false),
+                                onPressed: () =>
+                                    Navigator.of(dContext).pop(false),
                                 child: const Text('Cancel'),
                               ),
                               FilledButton(
-                                onPressed: () => Navigator.of(dContext).pop(true),
+                                onPressed: () =>
+                                    Navigator.of(dContext).pop(true),
                                 child: const Text('Delete'),
                               ),
                             ],
@@ -170,7 +185,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                       }
                     },
                     itemBuilder: (context) => const [
-                      PopupMenuItem(value: 'agreement', child: Text('Agreement')),
+                      PopupMenuItem(
+                        value: 'agreement',
+                        child: Text('Agreement'),
+                      ),
                       PopupMenuItem(value: 'edit', child: Text('Edit')),
                       PopupMenuItem(value: 'delete', child: Text('Delete')),
                     ],
@@ -224,16 +242,36 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             const SizedBox(height: 8),
             _field(_addressCtrl, 'Home Address'),
             const SizedBox(height: 8),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              activeColor: AppColors.primary,
-              title: const Text(
-                'Employee Active',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+            _field(_specialityCtrl, 'Speciality'),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
               ),
-              value: _newEmployeeActive,
-              onChanged: (value) => setState(() => _newEmployeeActive = value),
+              child: Row(
+                children: [
+                  Text(
+                    _newEmployeeActive ? 'Active' : 'Inactive',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _newEmployeeActive
+                          ? Colors.black
+                          : Colors.grey.shade600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Switch.adaptive(
+                    activeColor: Colors.black,
+                    inactiveTrackColor: Colors.grey.shade400,
+                    value: _newEmployeeActive,
+                    onChanged: (value) =>
+                        setState(() => _newEmployeeActive = value),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             SizedBox(
@@ -243,7 +281,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onPressed: _saveEmployee,
                 child: const Text(
@@ -274,7 +314,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -311,6 +354,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           cnicNumber: _cnicCtrl.text.trim(),
           homeAddress: _addressCtrl.text.trim(),
           isActive: _newEmployeeActive,
+          speciality: _specialityCtrl.text.trim(),
         ),
       );
       _firstNameCtrl.clear();
@@ -318,6 +362,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       _phoneCtrl.text = '+92';
       _cnicCtrl.clear();
       _addressCtrl.clear();
+      _specialityCtrl.clear();
       _showAddForm = false;
       _newEmployeeActive = true;
     });
@@ -356,7 +401,36 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
   bool _isValidPkPhone(String value) => RegExp(r'^\+92\d{10}$').hasMatch(value);
 
-  bool _isValidCnic(String value) => RegExp(r'^\d{5}-\d{7}-\d$').hasMatch(value);
+  bool _isValidCnic(String value) =>
+      RegExp(r'^\d{5}-\d{7}-\d$').hasMatch(value);
+}
+
+class _EmployeeAvatar extends StatelessWidget {
+  const _EmployeeAvatar({required this.employeeId});
+
+  final String employeeId;
+
+  @override
+  Widget build(BuildContext context) {
+    final useAsset = employeeId.hashCode.isEven;
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: Colors.grey.shade200,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: useAsset
+          ? Image.asset(
+              'assets/placeholder.png',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const Icon(CupertinoIcons.person_fill),
+            )
+          : const Icon(CupertinoIcons.person_fill, size: 24),
+    );
+  }
 }
 
 class _CnicFormatter extends TextInputFormatter {
@@ -409,4 +483,3 @@ class _PhonePkFormatter extends TextInputFormatter {
     );
   }
 }
-

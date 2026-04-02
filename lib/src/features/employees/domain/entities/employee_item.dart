@@ -7,6 +7,7 @@ class EmployeeItem {
     required this.cnicNumber,
     required this.homeAddress,
     required this.isActive,
+    this.speciality,
     this.employeeType,
     this.basicSalary,
     this.commission,
@@ -20,6 +21,7 @@ class EmployeeItem {
   final String cnicNumber;
   final String homeAddress;
   final bool isActive;
+  final String? speciality;
   final String? employeeType;
   final String? basicSalary;
   final String? commission;
@@ -35,6 +37,7 @@ class EmployeeItem {
     String? cnicNumber,
     String? homeAddress,
     bool? isActive,
+    String? speciality,
     String? employeeType,
     String? basicSalary,
     String? commission,
@@ -48,6 +51,7 @@ class EmployeeItem {
       cnicNumber: cnicNumber ?? this.cnicNumber,
       homeAddress: homeAddress ?? this.homeAddress,
       isActive: isActive ?? this.isActive,
+      speciality: speciality ?? this.speciality,
       employeeType: employeeType ?? this.employeeType,
       basicSalary: basicSalary ?? this.basicSalary,
       commission: commission ?? this.commission,
@@ -55,4 +59,3 @@ class EmployeeItem {
     );
   }
 }
-

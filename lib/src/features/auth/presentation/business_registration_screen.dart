@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/entities/business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_scope.dart';
@@ -482,6 +483,9 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
         ],
       ),
     );
-    return shouldExit == true;
+    if (shouldExit == true) {
+      await SystemNavigator.pop();
+    }
+    return false;
   }
 }
