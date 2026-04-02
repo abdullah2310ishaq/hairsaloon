@@ -334,7 +334,6 @@ class _AppDrawerState extends State<AppDrawer> {
   Future<void> _handleLogout(BuildContext context) async {
     final navigator = Navigator.of(context);
     final profileNotifier = context.read<BusinessProfileNotifier>();
-    navigator.pop();
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -376,6 +375,8 @@ class _AppDrawerState extends State<AppDrawer> {
 
     if (shouldLogout != true || !mounted) return;
 
+    // Close drawer first, then clear session and reset navigation stack.
+    navigator.pop();
     await profileNotifier.clear();
     if (!mounted) return;
 
