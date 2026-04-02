@@ -19,6 +19,7 @@ class FinanceOverviewScreen extends StatefulWidget {
 
 class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
   DateTime _selectedDate = DateTime.now();
+  _FinancePeriod _period = _FinancePeriod.daily;
 
   @override
   Widget build(BuildContext context) {
@@ -26,14 +27,22 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
     final expenses = context.watch<ExpensesStore>().items;
     final employees = context.watch<EmployeesStore>().employees;
 
-    final todayRevenue = bills
-        .where((b) => _isSameDate(b.createdAt, _selectedDate))
+    final periodRevenue = bills
+        .where((b) => _isInSelectedPeriod(b.createdAt))
         .fold<double>(0, (sum, b) => sum + b.grandTotal);
-    final todayExpenses = expenses
-        .where((e) => _isSameDate(e.date, _selectedDate))
+    final periodExpenses = expenses
+        .where((e) => _isInSelectedPeriod(e.date))
         .fold<double>(0, (sum, e) => sum + e.amount);
-    final todayProfit = todayRevenue - todayExpenses;
-    final employeeRows = _buildEmployeeRows(_selectedDate, employees, bills);
+    final periodProfit = periodRevenue - periodExpenses;
+    final periodTransactionCount = bills
+        .where((b) => _isInSelectedPeriod(b.createdAt))
+        .length;
+    final employeeRows = _buildEmployeeRows(
+      _selectedDate,
+      _period,
+      employees,
+      bills,
+    );
     final isSelectedToday = _isSameDate(_selectedDate, DateTime.now());
 
     return Scaffold(
@@ -41,7 +50,7 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
       body: Column(
         children: [
           _Header(
-            dateText: _formatDate(_selectedDate),
+            dateText: _periodDateLabel(),
             onDateTap: _pickDate,
             onResetTap: _resetToToday,
             showReset: !isSelectedToday,
@@ -50,8 +59,12 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
               children: [
+                _periodFilterRow(),
+                const SizedBox(height: 8),
                 _todaySaleCard(
-                  amount: todayRevenue,
+                  amount: periodRevenue,
+                  title: _periodCardTitle(),
+                  subtitle: '$periodTransactionCount transactions',
                   onTap: () {
                     Navigator.of(context).pushNamed(AppRoutes.financeSales);
                   },
@@ -62,7 +75,7 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                     Expanded(
                       child: _miniStatCard(
                         title: 'Profit',
-                        amount: todayProfit,
+                        amount: periodProfit,
                         icon: CupertinoIcons.arrow_up_right,
                         amountColor: AppColors.success,
                         iconColor: AppColors.success,
@@ -72,7 +85,7 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                     Expanded(
                       child: _miniStatCard(
                         title: 'Expenses',
-                        amount: todayExpenses,
+                        amount: periodExpenses,
                         icon: CupertinoIcons.arrow_down_right,
                         amountColor: AppColors.danger,
                         iconColor: AppColors.danger,
@@ -136,12 +149,13 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
 
   static List<_EmployeeIncomeRow> _buildEmployeeRows(
     DateTime now,
+    _FinancePeriod period,
     List<EmployeeItem> employees,
     List<Bill> bills,
   ) {
     final earningsByEmployee = <String, double>{};
     for (final bill in bills) {
-      if (!_isSameDate(bill.createdAt, now)) continue;
+      if (!_periodContains(bill.createdAt, now, period)) continue;
       earningsByEmployee.update(
         bill.employeeName,
         (existing) => existing + bill.grandTotal,
@@ -160,6 +174,115 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
 
     rows.sort((a, b) => b.todayEarning.compareTo(a.todayEarning));
     return rows;
+  }
+
+  bool _isInSelectedPeriod(DateTime date) {
+    return _periodContains(date, _selectedDate, _period);
+  }
+
+  static bool _periodContains(
+    DateTime date,
+    DateTime anchor,
+    _FinancePeriod period,
+  ) {
+    switch (period) {
+      case _FinancePeriod.daily:
+        return _isSameDate(date, anchor);
+      case _FinancePeriod.weekly:
+        final start = DateTime(
+          anchor.year,
+          anchor.month,
+          anchor.day,
+        ).subtract(Duration(days: anchor.weekday - 1));
+        final end = start.add(const Duration(days: 6));
+        final target = DateTime(date.year, date.month, date.day);
+        return !target.isBefore(start) && !target.isAfter(end);
+      case _FinancePeriod.monthly:
+        return date.year == anchor.year && date.month == anchor.month;
+    }
+  }
+
+  String _periodCardTitle() {
+    switch (_period) {
+      case _FinancePeriod.daily:
+        return 'TODAY SALE';
+      case _FinancePeriod.weekly:
+        return 'WEEKLY SALE';
+      case _FinancePeriod.monthly:
+        return 'MONTHLY SALE';
+    }
+  }
+
+  String _periodDateLabel() {
+    switch (_period) {
+      case _FinancePeriod.daily:
+        return _formatDate(_selectedDate);
+      case _FinancePeriod.weekly:
+        final start = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+        ).subtract(Duration(days: _selectedDate.weekday - 1));
+        final end = start.add(const Duration(days: 6));
+        return '${_formatDate(start)} - ${_formatDate(end)}';
+      case _FinancePeriod.monthly:
+        const months = <String>[
+          'JANUARY',
+          'FEBRUARY',
+          'MARCH',
+          'APRIL',
+          'MAY',
+          'JUNE',
+          'JULY',
+          'AUGUST',
+          'SEPTEMBER',
+          'OCTOBER',
+          'NOVEMBER',
+          'DECEMBER',
+        ];
+        return '${months[_selectedDate.month - 1]} ${_selectedDate.year}';
+    }
+  }
+
+  Widget _periodFilterRow() {
+    return Row(
+      children: [
+        _periodChip(_FinancePeriod.daily, 'Daily'),
+        const SizedBox(width: 8),
+        _periodChip(_FinancePeriod.weekly, 'Weekly'),
+        const SizedBox(width: 8),
+        _periodChip(_FinancePeriod.monthly, 'Monthly'),
+      ],
+    );
+  }
+
+  Widget _periodChip(_FinancePeriod value, String label) {
+    final selected = _period == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _period = value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? AppColors.primary : Colors.grey.shade300,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   static String _formatDate(DateTime date) {
@@ -197,6 +320,8 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
 
   Widget _todaySaleCard({
     required double amount,
+    required String title,
+    String? subtitle,
     VoidCallback? onTap,
   }) {
     return Material(
@@ -237,9 +362,9 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'TODAY SALE',
-                    style: TextStyle(
+                  Text(
+                    title,
+                    style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
@@ -255,6 +380,17 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -540,6 +676,8 @@ class _EmployeeIncomeRow {
   final EmployeeItem employee;
   final double todayEarning;
 }
+
+enum _FinancePeriod { daily, weekly, monthly }
 
 class _EmployeeAvatar extends StatelessWidget {
   const _EmployeeAvatar({required this.employeeId});

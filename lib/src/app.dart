@@ -109,11 +109,10 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                   ),
                   useMaterial3: true,
                 ),
-                initialRoute: bootstrap.hasSession
-                    ? AppRoutes.homeShell
-                    : AppRoutes.businessRegistration,
+                initialRoute: AppRoutes.splash,
                 routes: {
-                  AppRoutes.splash: (_) => const SplashScreen(),
+                  AppRoutes.splash: (_) =>
+                      SplashScreen(hasSession: bootstrap.hasSession),
                   AppRoutes.login: (_) => const LoginScreen(),
                   AppRoutes.businessRegistration: (_) =>
                       const BusinessRegistrationScreen(),
@@ -272,37 +271,42 @@ class _AppBootstrap {
   final bool hasSession;
 }
 
-class SplashScreen extends StatelessWidget {
-  const SplashScreen({super.key});
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key, required this.hasSession});
+
+  final bool hasSession;
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _navigate();
+  }
+
+  Future<void> _navigate() async {
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed(
+      widget.hasSession ? AppRoutes.homeShell : AppRoutes.login,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Business COMB',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.black,
-              ),
-              onPressed: () {
-                Navigator.of(context).pushReplacementNamed(AppRoutes.login);
-              },
-              child: const Text('Continue'),
-            ),
-          ],
+      body: const Center(
+        child: Text(
+          'Barber Management',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
         ),
       ),
     );

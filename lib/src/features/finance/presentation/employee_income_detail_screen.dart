@@ -69,6 +69,7 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w700,
+                  fontSize: 20,
                 ),
               ),
             ),
@@ -215,7 +216,7 @@ class _TopSection extends StatelessWidget {
                             employee.fullName,
                             style: const TextStyle(
                               color: AppColors.textPrimary,
-                              fontSize: 34,
+                              fontSize: 26,
                               fontWeight: FontWeight.w800,
                               height: 1.05,
                             ),
@@ -298,7 +299,7 @@ class _TopSection extends StatelessWidget {
                 _formatCurrency(totalEarning),
                 style: const TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: 42,
+                  fontSize: 30,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -343,7 +344,7 @@ Widget _dueAmountCard(double dueAmount) {
                 _formatCurrency(safeDue),
                 style: const TextStyle(
                   color: AppColors.danger,
-                  fontSize: 34,
+                  fontSize: 26,
                   fontWeight: FontWeight.w800,
                   height: 1.0,
                 ),

@@ -6,8 +6,16 @@ import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
-class EmployeeEarningsScreen extends StatelessWidget {
+class EmployeeEarningsScreen extends StatefulWidget {
   const EmployeeEarningsScreen({super.key});
+
+  @override
+  State<EmployeeEarningsScreen> createState() => _EmployeeEarningsScreenState();
+}
+
+class _EmployeeEarningsScreenState extends State<EmployeeEarningsScreen> {
+  _EarningPeriod _period = _EarningPeriod.monthly;
+  DateTime _anchorDate = DateTime.now();
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +24,11 @@ class EmployeeEarningsScreen extends StatelessWidget {
 
     final rows = employees.map((employee) {
       final employeeSales = bills
-          .where((bill) => bill.employeeName == employee.fullName)
+          .where(
+            (bill) =>
+                bill.employeeName == employee.fullName &&
+                _isInPeriod(bill.createdAt),
+          )
           .fold<double>(0, (sum, bill) => sum + bill.grandTotal);
       final salary = _toDouble(employee.basicSalary);
       final commissionPercent = _toDouble(employee.commission);
@@ -45,13 +57,100 @@ class EmployeeEarningsScreen extends StatelessWidget {
           'Employee Earnings',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
         ),
+        actions: [
+          IconButton(
+            onPressed: _pickDate,
+            icon: const Icon(CupertinoIcons.calendar, color: Colors.black),
+          ),
+        ],
       ),
       body: rows.isEmpty
           ? const Center(child: Text('No employees found.'))
           : ListView(
               padding: const EdgeInsets.all(12),
-              children: rows.map(_earningCard).toList(),
+              children: [
+                _periodRow(),
+                const SizedBox(height: 10),
+                ...rows.map(_earningCard),
+              ],
             ),
+    );
+  }
+
+  bool _isInPeriod(DateTime date) {
+    final target = DateTime(date.year, date.month, date.day);
+    switch (_period) {
+      case _EarningPeriod.daily:
+        return target == DateTime(
+          _anchorDate.year,
+          _anchorDate.month,
+          _anchorDate.day,
+        );
+      case _EarningPeriod.weekly:
+        final start = _weekStart(_anchorDate);
+        final end = start.add(const Duration(days: 6));
+        return !target.isBefore(start) && !target.isAfter(end);
+      case _EarningPeriod.monthly:
+        return target.year == _anchorDate.year && target.month == _anchorDate.month;
+    }
+  }
+
+  DateTime _weekStart(DateTime date) {
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(Duration(days: date.weekday - 1));
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _anchorDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null) return;
+    setState(() => _anchorDate = picked);
+  }
+
+  Widget _periodRow() {
+    return Row(
+      children: [
+        _periodChip(_EarningPeriod.daily, 'Daily'),
+        const SizedBox(width: 8),
+        _periodChip(_EarningPeriod.weekly, 'Weekly'),
+        const SizedBox(width: 8),
+        _periodChip(_EarningPeriod.monthly, 'Monthly'),
+      ],
+    );
+  }
+
+  Widget _periodChip(_EarningPeriod period, String label) {
+    final selected = _period == period;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _period = period),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? AppColors.primary : Colors.grey.shade300,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -159,4 +258,6 @@ class _EmployeeEarning {
   final double commissionAmount;
   final double totalPayout;
 }
+
+enum _EarningPeriod { daily, weekly, monthly }
 

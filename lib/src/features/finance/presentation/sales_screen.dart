@@ -15,6 +15,8 @@ class SalesScreen extends StatefulWidget {
 
 class _SalesScreenState extends State<SalesScreen> {
   String _paymentFilter = 'Cash';
+  _SalesPeriod _period = _SalesPeriod.daily;
+  DateTime _anchorDate = DateTime.now();
 
   @override
   Widget build(BuildContext context) {
@@ -25,35 +27,34 @@ class _SalesScreenState extends State<SalesScreen> {
               bill.paymentType.trim().toLowerCase() ==
               _paymentFilter.toLowerCase(),
         )
+        .where((bill) => _isInPeriod(bill.createdAt))
         .toList(growable: false);
 
-    final now = DateTime.now();
-    final totalMonthlySales = filteredBills
-        .where((bill) => bill.createdAt.year == now.year && bill.createdAt.month == now.month)
-        .fold<double>(0, (sum, bill) => sum + bill.grandTotal);
-    final todaySales = filteredBills
-        .where(
-          (bill) =>
-              bill.createdAt.year == now.year &&
-              bill.createdAt.month == now.month &&
-              bill.createdAt.day == now.day,
-        )
-        .fold<double>(0, (sum, bill) => sum + bill.grandTotal);
+    final totalSales = filteredBills.fold<double>(
+      0,
+      (sum, bill) => sum + bill.grandTotal,
+    );
+    final avgBill = filteredBills.isEmpty ? 0.0 : totalSales / filteredBills.length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
-          _header(totalMonthlySales: totalMonthlySales, todaySales: todaySales),
+          _header(totalSales: totalSales, avgBill: avgBill),
           const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: _periodRow(),
+          ),
+          const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                _filterChip('Cash'),
+                _paymentChip('Cash'),
                 const SizedBox(width: 8),
-                _filterChip('Online'),
+                _paymentChip('Online'),
               ],
             ),
           ),
@@ -92,7 +93,7 @@ class _SalesScreenState extends State<SalesScreen> {
     );
   }
 
-  Widget _header({required double totalMonthlySales, required double todaySales}) {
+  Widget _header({required double totalSales, required double avgBill}) {
     return Container(
       color: AppColors.primary,
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 18),
@@ -122,13 +123,13 @@ class _SalesScreenState extends State<SalesScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            const Text(
-              'Total Monthly Sales',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            Text(
+              _periodTitle(),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 3),
             Text(
-              'Rs.${totalMonthlySales.toStringAsFixed(0)}',
+              'Rs.${totalSales.toStringAsFixed(0)}',
               style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
@@ -141,15 +142,15 @@ class _SalesScreenState extends State<SalesScreen> {
               ),
               child: Column(
                 children: [
-                  const Text(
-                    'Today Sale',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                  Text(
+                    _periodLabel(),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Rs.${todaySales.toStringAsFixed(0)}',
+                    'Avg Bill Rs.${avgBill.toStringAsFixed(0)}',
                     style: const TextStyle(
-                      fontSize: 40,
+                      fontSize: 34,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -162,7 +163,56 @@ class _SalesScreenState extends State<SalesScreen> {
     );
   }
 
-  Widget _filterChip(String label) {
+  Widget _periodRow() {
+    return Row(
+      children: [
+        _periodChip(_SalesPeriod.daily, 'Daily'),
+        const SizedBox(width: 8),
+        _periodChip(_SalesPeriod.weekly, 'Weekly'),
+        const SizedBox(width: 8),
+        _periodChip(_SalesPeriod.monthly, 'Monthly'),
+        const SizedBox(width: 8),
+        IconButton(
+          onPressed: _pickDate,
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.white,
+            side: BorderSide(color: Colors.grey.shade300),
+          ),
+          icon: const Icon(CupertinoIcons.calendar, size: 18),
+        ),
+      ],
+    );
+  }
+
+  Widget _periodChip(_SalesPeriod period, String label) {
+    final selected = _period == period;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _period = period),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? AppColors.primary : Colors.grey.shade300,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _paymentChip(String label) {
     final selected = _paymentFilter == label;
     return Expanded(
       child: GestureDetector(
@@ -190,13 +240,93 @@ class _SalesScreenState extends State<SalesScreen> {
     );
   }
 
+  String _periodTitle() {
+    switch (_period) {
+      case _SalesPeriod.daily:
+        return 'Total Daily Sales';
+      case _SalesPeriod.weekly:
+        return 'Total Weekly Sales';
+      case _SalesPeriod.monthly:
+        return 'Total Monthly Sales';
+    }
+  }
+
+  String _periodLabel() {
+    switch (_period) {
+      case _SalesPeriod.daily:
+        return _formatDay(_anchorDate);
+      case _SalesPeriod.weekly:
+        final start = _weekStart(_anchorDate);
+        final end = start.add(const Duration(days: 6));
+        return '${_formatDay(start)} - ${_formatDay(end)}';
+      case _SalesPeriod.monthly:
+        const months = <String>[
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
+        return '${months[_anchorDate.month - 1]} ${_anchorDate.year}';
+    }
+  }
+
+  bool _isInPeriod(DateTime date) {
+    final target = DateTime(date.year, date.month, date.day);
+    switch (_period) {
+      case _SalesPeriod.daily:
+        return target == DateTime(
+          _anchorDate.year,
+          _anchorDate.month,
+          _anchorDate.day,
+        );
+      case _SalesPeriod.weekly:
+        final start = _weekStart(_anchorDate);
+        final end = start.add(const Duration(days: 6));
+        return !target.isBefore(start) && !target.isAfter(end);
+      case _SalesPeriod.monthly:
+        return target.year == _anchorDate.year && target.month == _anchorDate.month;
+    }
+  }
+
+  DateTime _weekStart(DateTime date) {
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(Duration(days: date.weekday - 1));
+  }
+
+  String _formatDay(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _anchorDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null) return;
+    setState(() => _anchorDate = picked);
+  }
+
   Widget _salesTile(BuildContext context, Bill bill) {
     final customerLabel = bill.customerName.trim().isNotEmpty
         ? bill.customerName.trim()
         : (bill.customerPhone.trim().isNotEmpty
               ? bill.customerPhone.trim()
               : 'Walk-in Customer');
-    final firstService = bill.lines.isNotEmpty ? bill.lines.first.serviceName : 'No service';
+    final firstService =
+        bill.lines.isNotEmpty ? bill.lines.first.serviceName : 'No service';
     final dateText =
         '${bill.createdAt.day.toString().padLeft(2, '0')}-${bill.createdAt.month.toString().padLeft(2, '0')}-${bill.createdAt.year}';
     final timeText =
@@ -206,7 +336,10 @@ class _SalesScreenState extends State<SalesScreen> {
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: InkWell(
         onTap: () {
-          Navigator.of(context).pushNamed(AppRoutes.billDetails, arguments: bill.id);
+          Navigator.of(context).pushNamed(
+            AppRoutes.billDetails,
+            arguments: bill.id,
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -241,7 +374,10 @@ class _SalesScreenState extends State<SalesScreen> {
                       firstService,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -281,10 +417,12 @@ class _EmptySalesCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: const Text(
-        'No sales found for selected payment type.',
+        'No sales found for selected filters.',
         style: TextStyle(fontSize: 13, color: Colors.black54),
       ),
     );
   }
 }
+
+enum _SalesPeriod { daily, weekly, monthly }
 
