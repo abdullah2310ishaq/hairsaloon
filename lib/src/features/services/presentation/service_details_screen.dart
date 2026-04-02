@@ -1,8 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/services/data/local_category_store.dart';
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
+import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   const ServiceDetailsScreen({super.key, required this.item});
@@ -39,9 +40,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     super.dispose();
   }
 
-  List<String> get _categories => LocalCategoryStore.categories;
+  List<String> get _categories => context.watch<ServicesStore>().categories;
   List<String> get _subcategories =>
-      LocalCategoryStore.subcategoriesFor(_category);
+      context.watch<ServicesStore>().subcategoriesFor(_category);
 
   @override
   Widget build(BuildContext context) {

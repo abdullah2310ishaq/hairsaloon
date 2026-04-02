@@ -1,6 +1,7 @@
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
 import 'package:hairsaloon/src/features/services/data/local_category_store.dart';
 
+@Deprecated('Use ServicesStore + HiveServicesRepository instead.')
 class LocalServicesStore {
   LocalServicesStore._();
 

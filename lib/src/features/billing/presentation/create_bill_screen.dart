@@ -1,12 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
-import 'package:hairsaloon/src/features/employees/data/local_employees_store.dart';
+import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
-import 'package:hairsaloon/src/features/services/data/local_services_store.dart';
-import 'package:hairsaloon/src/features/settings/data/local_tax_rate_store.dart';
+import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
+import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
+import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class CreateBillScreen extends StatefulWidget {
   const CreateBillScreen({
@@ -31,8 +32,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   @override
   void initState() {
     super.initState();
-    LocalTaxRateStore.taxRateListenable.addListener(_onTaxRateChanged);
-    final activeEmployees = LocalEmployeesStore.employees
+    final activeEmployees = context.read<EmployeesStore>().employees
         .where((e) => e.isActive)
         .map((e) => e.fullName)
         .where((name) => name.isNotEmpty)
@@ -40,7 +40,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     _employee = activeEmployees.isNotEmpty
         ? activeEmployees.first
         : 'Unassigned';
-    final services = LocalServicesStore.services;
+    final services = context.read<ServicesStore>().services;
     _amountControllers = {
       for (int i = 0; i < services.length; i++)
         i: TextEditingController(text: services[i].price.toStringAsFixed(0)),
@@ -49,20 +49,14 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
 
   @override
   void dispose() {
-    LocalTaxRateStore.taxRateListenable.removeListener(_onTaxRateChanged);
     for (final c in _amountControllers.values) {
       c.dispose();
     }
     super.dispose();
   }
 
-  void _onTaxRateChanged() {
-    if (!mounted) return;
-    setState(() {});
-  }
-
   List<BillLine> get _selectedLines {
-    final services = LocalServicesStore.services;
+    final services = context.read<ServicesStore>().services;
     return _selectedServiceIndexes.map((i) {
       final svc = services[i];
       final amount =
@@ -78,14 +72,14 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
 
   double get _subTotal =>
       _selectedLines.fold(0, (sum, line) => sum + line.total);
-  double get _taxPercent => LocalTaxRateStore.taxRate;
+  double get _taxPercent => context.read<SettingsStore>().taxRate;
   double get _taxAmount => (_subTotal * _taxPercent) / 100;
   double get _grandTotal => _subTotal + _taxAmount;
 
   @override
   Widget build(BuildContext context) {
-    final services = LocalServicesStore.services;
-    final employeeOptions = LocalEmployeesStore.employees
+    final services = context.watch<ServicesStore>().services;
+    final employeeOptions = context.watch<EmployeesStore>().employees
         .where((e) => e.isActive)
         .map((e) => e.fullName)
         .where((name) => name.isNotEmpty)
@@ -293,7 +287,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     );
   }
 
-  void _saveBill() {
+  Future<void> _saveBill() async {
     if (_selectedLines.isEmpty) {
       _showMessage('Select at least one service.');
       return;
@@ -311,7 +305,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       taxAmount: _taxAmount,
       grandTotal: _grandTotal,
     );
-    LocalBillingStore.addBill(bill);
+    await context.read<BillingStore>().addBill(bill);
     Navigator.of(
       context,
     ).pushReplacementNamed(AppRoutes.billDetails, arguments: bill.id);

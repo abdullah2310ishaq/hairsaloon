@@ -1,5 +1,6 @@
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 
+@Deprecated('Use EmployeesStore + HiveEmployeesRepository instead.')
 class LocalEmployeesStore {
   LocalEmployeesStore._();
 

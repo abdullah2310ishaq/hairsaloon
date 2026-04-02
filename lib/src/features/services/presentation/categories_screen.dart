@@ -1,8 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/services/data/local_category_store.dart';
+import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
 import 'package:hairsaloon/src/features/services/presentation/subcategories_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
@@ -10,7 +11,7 @@ class CategoriesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final categories = LocalCategoryStore.categories;
+    final categories = context.watch<ServicesStore>().categories;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,

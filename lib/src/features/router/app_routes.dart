@@ -22,6 +22,7 @@ class AppRoutes {
 
   static const financeOverview = '/finance';
   static const employeeEarnings = '/finance/employee-earnings';
+  static const financeSales = '/finance/sales';
 
   static const customers = '/customers';
   static const profileSettings = '/profile-settings';

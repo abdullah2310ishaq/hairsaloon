@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+@Deprecated('Use BillingStore + HiveBillingRepository instead.')
 class LocalBillingStore {
   LocalBillingStore._();
 

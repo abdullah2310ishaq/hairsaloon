@@ -1,8 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_scope.dart';
+import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
-import 'package:hairsaloon/src/features/settings/data/local_tax_rate_store.dart';
+import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // ─── Design tokens (mirrors registration screen) ──────────────────────────────
@@ -241,8 +242,9 @@ class _AppDrawerState extends State<AppDrawer> {
 
   // ─── Tax dialog ───────────────────────────────────────────────────────────
   Future<void> _showTaxRateDialog(BuildContext context) async {
+    final settingsStore = context.read<SettingsStore>();
     final controller = TextEditingController(
-      text: LocalTaxRateStore.taxRate.toStringAsFixed(0),
+      text: settingsStore.taxRate.toStringAsFixed(0),
     );
     final didSave = await showDialog<bool>(
       context: context,
@@ -303,7 +305,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 Navigator.of(dialogContext).pop(false);
                 return;
               }
-              LocalTaxRateStore.setTaxRate(value);
+              settingsStore.setTaxRate(value);
               Navigator.of(dialogContext).pop(true);
             },
             child: const Text(
@@ -371,7 +373,7 @@ class _AppDrawerState extends State<AppDrawer> {
     );
 
     if (shouldLogout == true) {
-      await BusinessProfileScope.of(context).clear();
+      await context.read<BusinessProfileNotifier>().clear();
       Navigator.of(context).pushNamedAndRemoveUntil(
         AppRoutes.businessRegistration,
         (route) => false,
@@ -479,6 +481,7 @@ class _Item extends StatelessWidget {
 class _TaxBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final taxRate = context.select<SettingsStore, double>((store) => store.taxRate);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -487,7 +490,7 @@ class _TaxBadge extends StatelessWidget {
         border: Border.all(color: _C.border, width: 1),
       ),
       child: Text(
-        '${LocalTaxRateStore.taxRate.toStringAsFixed(0)}%',
+        '${taxRate.toStringAsFixed(0)}%',
         style: const TextStyle(
           color: Colors.black,
           fontSize: 11,

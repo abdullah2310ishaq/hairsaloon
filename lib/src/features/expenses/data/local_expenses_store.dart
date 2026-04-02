@@ -1,5 +1,6 @@
 import 'package:hairsaloon/src/features/expenses/domain/entities/expense_item.dart';
 
+@Deprecated('Use ExpensesStore + HiveExpensesRepository instead.')
 class LocalExpensesStore {
   LocalExpensesStore._();
 

@@ -1,8 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/entities/business_profile.dart';
-import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_scope.dart';
+import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -24,7 +25,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final profile = BusinessProfileScope.of(context).profile;
+    final profile = context.read<BusinessProfileNotifier>().profile;
     if (profile == null || _nameCtrl.text.isNotEmpty) return;
     _nameCtrl.text = profile.businessName;
     _phoneCtrl.text = profile.phoneNumber;
@@ -47,7 +48,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = BusinessProfileScope.of(context).profile;
+    final profile = context.watch<BusinessProfileNotifier>().profile;
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
       appBar: AppBar(
@@ -145,7 +146,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
     final updated = BusinessProfile(
@@ -156,7 +157,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       area: _areaCtrl.text.trim(),
       address: _addressCtrl.text.trim(),
     );
-    BusinessProfileScope.of(context).save(updated);
+    await context.read<BusinessProfileNotifier>().save(updated);
     setState(() => _isEditing = false);
   }
 }

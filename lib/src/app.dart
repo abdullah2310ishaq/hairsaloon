@@ -1,32 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hairsaloon/src/core/storage/hive_bootstrap.dart';
 import 'package:hairsaloon/src/features/appointments/presentation/appointments_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/business_registration_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/login_screen.dart';
 import 'package:hairsaloon/src/features/billing/presentation/bill_details_screen.dart';
 import 'package:hairsaloon/src/features/billing/presentation/saved_bills_screen.dart';
-import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
+import 'package:hairsaloon/src/features/billing/data/repositories/hive_billing_repository.dart';
+import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/business_profile/data/repositories/shared_prefs_business_profile_repository.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/clear_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/get_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/save_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
-import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_scope.dart';
 import 'package:hairsaloon/src/features/dashboard/presentation/dashboard_shell.dart';
 import 'package:hairsaloon/src/features/customers/presentation/customers_screen.dart';
+import 'package:hairsaloon/src/features/employees/data/repositories/hive_employees_repository.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employee_agreement_screen.dart';
+import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employees_screen.dart';
+import 'package:hairsaloon/src/features/expenses/data/repositories/hive_expenses_repository.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expense_types_screen.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expenses_screen.dart';
 import 'package:hairsaloon/src/features/finance/presentation/employee_earnings_screen.dart';
 import 'package:hairsaloon/src/features/finance/presentation/finance_overview_screen.dart';
+import 'package:hairsaloon/src/features/finance/presentation/sales_screen.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
+import 'package:hairsaloon/src/features/services/data/repositories/hive_services_repository.dart';
 import 'package:hairsaloon/src/features/settings/presentation/profile_settings_screen.dart';
+import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
+import 'package:hairsaloon/src/features/settings/data/repositories/hive_settings_repository.dart';
+import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
 import 'package:hairsaloon/src/features/services/presentation/new_service_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/categories_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/service_list_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/subcategories_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BusinessCombApp extends StatefulWidget {
@@ -68,8 +79,27 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
               return _loadingApp(message: 'Loading local storage...');
             }
 
-            return BusinessProfileScope(
-              notifier: bootstrap.notifier,
+            return MultiProvider(
+              providers: [
+                ChangeNotifierProvider<BusinessProfileNotifier>.value(
+                  value: bootstrap.profileNotifier,
+                ),
+                ChangeNotifierProvider<BillingStore>.value(
+                  value: bootstrap.billingStore,
+                ),
+                ChangeNotifierProvider<EmployeesStore>.value(
+                  value: bootstrap.employeesStore,
+                ),
+                ChangeNotifierProvider<ExpensesStore>.value(
+                  value: bootstrap.expensesStore,
+                ),
+                ChangeNotifierProvider<ServicesStore>.value(
+                  value: bootstrap.servicesStore,
+                ),
+                ChangeNotifierProvider<SettingsStore>.value(
+                  value: bootstrap.settingsStore,
+                ),
+              ],
               child: MaterialApp(
                 title: 'Business COMB',
                 debugShowCheckedModeBanner: false,
@@ -100,6 +130,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                       const FinanceOverviewScreen(),
                   AppRoutes.employeeEarnings: (_) =>
                       const EmployeeEarningsScreen(),
+                  AppRoutes.financeSales: (_) => const SalesScreen(),
                   AppRoutes.expenseTypes: (_) => const ExpenseTypesScreen(),
                   AppRoutes.expenses: (_) => const ExpensesScreen(),
                   AppRoutes.customers: (_) => const CustomersScreen(),
@@ -191,25 +222,53 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
 
   Future<_AppBootstrap> _bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
-    await LocalBillingStore.init(prefs);
+    await HiveBootstrap.init(prefs);
+
+    final billingStore = BillingStore(repository: HiveBillingRepository());
+    final employeesStore = EmployeesStore(
+      repository: HiveEmployeesRepository(),
+    );
+    final expensesStore = ExpensesStore(repository: HiveExpensesRepository());
+    final servicesStore = ServicesStore(repository: HiveServicesRepository());
+    await servicesStore.load();
+    final settingsStore = SettingsStore(repository: HiveSettingsRepository());
+
     final repository = SharedPrefsBusinessProfileRepository(prefs: prefs);
-    final notifier = BusinessProfileNotifier(
+    final profileNotifier = BusinessProfileNotifier(
       getBusinessProfile: GetBusinessProfile(repository),
       saveBusinessProfile: SaveBusinessProfile(repository),
       clearBusinessProfile: ClearBusinessProfile(repository),
     );
-    await notifier.load();
+    await profileNotifier.load();
     return _AppBootstrap(
-      notifier: notifier,
-      hasSession: notifier.profile != null,
+      profileNotifier: profileNotifier,
+      billingStore: billingStore,
+      employeesStore: employeesStore,
+      expensesStore: expensesStore,
+      servicesStore: servicesStore,
+      settingsStore: settingsStore,
+      hasSession: profileNotifier.profile != null,
     );
   }
 }
 
 class _AppBootstrap {
-  const _AppBootstrap({required this.notifier, required this.hasSession});
+  const _AppBootstrap({
+    required this.profileNotifier,
+    required this.billingStore,
+    required this.employeesStore,
+    required this.expensesStore,
+    required this.servicesStore,
+    required this.settingsStore,
+    required this.hasSession,
+  });
 
-  final BusinessProfileNotifier notifier;
+  final BusinessProfileNotifier profileNotifier;
+  final BillingStore billingStore;
+  final EmployeesStore employeesStore;
+  final ExpensesStore expensesStore;
+  final ServicesStore servicesStore;
+  final SettingsStore settingsStore;
   final bool hasSession;
 }
 

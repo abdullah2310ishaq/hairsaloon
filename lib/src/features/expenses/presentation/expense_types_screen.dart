@@ -1,8 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/employees/data/local_employees_store.dart';
+import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/features/expenses/domain/entities/expense_item.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class ExpenseTypesScreen extends StatefulWidget {
   const ExpenseTypesScreen({super.key});
@@ -40,7 +41,7 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final employees = LocalEmployeesStore.employees.map((e) => e.fullName).toList();
+    final employees = context.watch<EmployeesStore>().employees.map((e) => e.fullName).toList();
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
       appBar: AppBar(

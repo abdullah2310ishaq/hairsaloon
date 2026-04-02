@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+@Deprecated('Use SettingsStore + HiveSettingsRepository instead.')
 class LocalTaxRateStore {
   LocalTaxRateStore._();
 

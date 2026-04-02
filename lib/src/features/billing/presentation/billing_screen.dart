@@ -1,13 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
-import 'package:hairsaloon/src/features/employees/data/local_employees_store.dart';
+import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
+import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
-import 'package:hairsaloon/src/features/services/data/local_services_store.dart';
+import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
-import 'package:hairsaloon/src/features/settings/data/local_tax_rate_store.dart';
+import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class BillingScreen extends StatefulWidget {
   const BillingScreen({super.key});
@@ -27,20 +28,19 @@ class _BillingScreenState extends State<BillingScreen> {
   late String _employee;
   String _paymentType = 'Cash';
 
-  List<ServiceItem> get _services => LocalServicesStore.services;
   List<String> get _categories {
-    final values = _services.map((service) => service.category).toSet().toList()
+    final values = context
+        .watch<ServicesStore>()
+        .services
+        .map((service) => service.category)
+        .toSet()
+        .toList()
       ..sort();
     return <String>['All', ...values];
   }
 
-  List<ServiceItem> get _filteredServices {
-    if (_selectedCategory == 'All') return _services;
-    return _services.where((s) => s.category == _selectedCategory).toList();
-  }
-
-  List<BillLine> get _selectedLines {
-    final selectedServices = _services
+  List<BillLine> _selectedLines(List<ServiceItem> services) {
+    final selectedServices = services
         .where((s) => _selectedServiceIds.contains(s.id))
         .toList(growable: false);
     return selectedServices
@@ -56,17 +56,10 @@ class _BillingScreenState extends State<BillingScreen> {
         .toList(growable: false);
   }
 
-  double get _subTotal =>
-      _selectedLines.fold(0, (sum, line) => sum + line.total);
-  double get _taxPercent => LocalTaxRateStore.taxRate;
-  double get _taxAmount => (_subTotal * _taxPercent) / 100;
-  double get _grandTotal => _subTotal + _taxAmount;
-
   @override
   void initState() {
     super.initState();
-    LocalTaxRateStore.taxRateListenable.addListener(_onTaxRateChanged);
-    final activeEmployees = LocalEmployeesStore.employees
+    final activeEmployees = context.read<EmployeesStore>().employees
         .where((e) => e.isActive)
         .map((e) => e.fullName)
         .where((name) => name.isNotEmpty)
@@ -74,27 +67,22 @@ class _BillingScreenState extends State<BillingScreen> {
     _employee = activeEmployees.isNotEmpty
         ? activeEmployees.first
         : 'Unassigned';
-    for (final service in _services) {
+    for (final service in context.read<ServicesStore>().services) {
       _servicePricesById[service.id] = service.price;
     }
   }
 
   @override
   void dispose() {
-    LocalTaxRateStore.taxRateListenable.removeListener(_onTaxRateChanged);
     _scrollCtrl.dispose();
     _phoneCtrl.dispose();
     super.dispose();
   }
 
-  void _onTaxRateChanged() {
-    if (!mounted) return;
-    setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
-    final employeeOptions = LocalEmployeesStore.employees
+    final services = context.watch<ServicesStore>().services;
+    final employeeOptions = context.watch<EmployeesStore>().employees
         .where((e) => e.isActive)
         .map((e) => e.fullName)
         .where((name) => name.isNotEmpty)
@@ -107,6 +95,14 @@ class _BillingScreenState extends State<BillingScreen> {
         !_hidePhoneSuggestions &&
         customerPhone.isNotEmpty &&
         phoneMatches.isNotEmpty;
+    final selectedLines = _selectedLines(services);
+    final subTotal = selectedLines.fold<double>(
+      0,
+      (sum, line) => sum + line.total,
+    );
+    final taxPercent = context.watch<SettingsStore>().taxRate;
+    final taxAmount = (subTotal * taxPercent) / 100;
+    final grandTotal = subTotal + taxAmount;
     final hasCustomerInfo = customerPhone.isNotEmpty;
     final customerInfoText = 'Customer Phone: $customerPhone';
 
@@ -177,7 +173,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 Row(
                   children: [
                     Text(
-                      'Sub Total : ${_subTotal.toStringAsFixed(0)}',
+                      'Sub Total : ${subTotal.toStringAsFixed(0)}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -186,7 +182,7 @@ class _BillingScreenState extends State<BillingScreen> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'Tax : ${_taxPercent.toStringAsFixed(0)}%',
+                      'Tax : ${taxPercent.toStringAsFixed(0)}%',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -195,7 +191,7 @@ class _BillingScreenState extends State<BillingScreen> {
                     ),
                     const Spacer(),
                     Text(
-                      'Total : Rs.${_grandTotal.toStringAsFixed(0)}',
+                      'Total : Rs.${grandTotal.toStringAsFixed(0)}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -463,7 +459,9 @@ class _BillingScreenState extends State<BillingScreen> {
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: _filteredServices.length,
+            itemCount: _selectedCategory == 'All'
+                ? services.length
+                : services.where((s) => s.category == _selectedCategory).length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
               mainAxisSpacing: 10,
@@ -471,7 +469,12 @@ class _BillingScreenState extends State<BillingScreen> {
               childAspectRatio: 0.9,
             ),
             itemBuilder: (context, index) {
-              final service = _filteredServices[index];
+              final filteredServices = _selectedCategory == 'All'
+                  ? services
+                  : services
+                        .where((s) => s.category == _selectedCategory)
+                        .toList(growable: false);
+              final service = filteredServices[index];
               final selected = _selectedServiceIds.contains(service.id);
               final price = _servicePricesById[service.id] ?? service.price;
               return InkWell(
@@ -570,13 +573,13 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
-  void _addCurrentPhoneAsNew() {
+  Future<void> _addCurrentPhoneAsNew() async {
     final phone = _phoneCtrl.text.trim();
     if (phone.isEmpty) {
       _showMessage('Enter customer phone number first.');
       return;
     }
-    final added = LocalBillingStore.addKnownCustomerPhone(phone);
+    final added = await context.read<BillingStore>().addKnownCustomerPhone(phone);
     setState(() {
       _hidePhoneSuggestions = true;
     });
@@ -588,8 +591,10 @@ class _BillingScreenState extends State<BillingScreen> {
     _scrollToServices();
   }
 
-  void _saveBill() {
-    if (_selectedLines.isEmpty) {
+  Future<void> _saveBill() async {
+    final services = context.read<ServicesStore>().services;
+    final selectedLines = _selectedLines(services);
+    if (selectedLines.isEmpty) {
       _showMessage('Select at least one service.');
       return;
     }
@@ -598,6 +603,11 @@ class _BillingScreenState extends State<BillingScreen> {
       _showMessage('Number not found. Select suggestion or tap Add New.');
       return;
     }
+    final settingsStore = context.read<SettingsStore>();
+    final subTotal = selectedLines.fold<double>(0, (sum, line) => sum + line.total);
+    final taxPercent = settingsStore.taxRate;
+    final taxAmount = (subTotal * taxPercent) / 100;
+    final grandTotal = subTotal + taxAmount;
     final bill = Bill(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       createdAt: DateTime.now(),
@@ -605,13 +615,13 @@ class _BillingScreenState extends State<BillingScreen> {
       customerPhone: phone,
       employeeName: _employee,
       paymentType: _paymentType,
-      lines: _selectedLines,
-      subTotal: _subTotal,
-      taxPercent: _taxPercent,
-      taxAmount: _taxAmount,
-      grandTotal: _grandTotal,
+      lines: selectedLines,
+      subTotal: subTotal,
+      taxPercent: taxPercent,
+      taxAmount: taxAmount,
+      grandTotal: grandTotal,
     );
-    LocalBillingStore.addBill(bill);
+    await context.read<BillingStore>().addBill(bill);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Bill saved successfully'),
@@ -628,18 +638,18 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   List<_PhoneMatch> _phoneMatches(String query) {
-    final matches = LocalBillingStore.searchCustomerPhones(query);
+    final matches = context.read<BillingStore>().searchCustomerPhones(query);
     return matches
         .map((phone) => _PhoneMatch(phone: phone))
         .toList(growable: false);
   }
 
   bool _hasKnownPhone(String value) {
-    return LocalBillingStore.hasKnownCustomerPhone(value);
+    return context.read<BillingStore>().hasKnownCustomerPhone(value);
   }
 
   void _resetForNewBill() {
-    final activeEmployees = LocalEmployeesStore.employees
+    final activeEmployees = context.read<EmployeesStore>().employees
         .where((e) => e.isActive)
         .map((e) => e.fullName)
         .where((name) => name.isNotEmpty)

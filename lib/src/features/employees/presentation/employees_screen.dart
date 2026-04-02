@@ -1,11 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hairsaloon/src/features/employees/data/local_employees_store.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employee_agreement_screen.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employee_details_screen.dart';
+import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class EmployeesScreen extends StatefulWidget {
   const EmployeesScreen({super.key});
@@ -27,7 +28,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   final _specialityCtrl = TextEditingController();
   bool _newEmployeeActive = true;
 
-  List<EmployeeItem> get _employees => LocalEmployeesStore.employees;
+  List<EmployeeItem> get _employees => context.watch<EmployeesStore>().employees;
   List<EmployeeItem> get _filteredEmployees {
     if (_statusTab == 'All') return _employees;
     if (_statusTab == 'Active') {
@@ -146,7 +147,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                               ),
                             );
                         if (updated == null) return;
-                        setState(() => LocalEmployeesStore.update(updated));
+                        context.read<EmployeesStore>().update(updated);
                         return;
                       }
                       if (value == 'edit') {
@@ -157,7 +158,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                               ),
                             );
                         if (updated == null) return;
-                        setState(() => LocalEmployeesStore.update(updated));
+                        context.read<EmployeesStore>().update(updated);
                         return;
                       }
                       if (value == 'delete') {
@@ -181,7 +182,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           ),
                         );
                         if (confirm != true) return;
-                        setState(() => LocalEmployeesStore.delete(e.id));
+                        context.read<EmployeesStore>().delete(e.id);
                       }
                     },
                     itemBuilder: (context) => const [
@@ -345,7 +346,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
     setState(() {
-      LocalEmployeesStore.add(
+      context.read<EmployeesStore>().add(
         EmployeeItem(
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           firstName: _firstNameCtrl.text.trim(),

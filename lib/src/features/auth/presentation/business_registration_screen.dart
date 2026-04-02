@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/entities/business_profile.dart';
-import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_scope.dart';
+import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
+import 'package:provider/provider.dart';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 class _C {
@@ -419,7 +420,7 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
   }
 
   // ─── Logic (unchanged) ────────────────────────────────────────────────────
-  void _handleRegister() {
+  Future<void> _handleRegister() async {
     final formState = _formKey.currentState;
     if (formState == null) return;
     if (!formState.validate()) return;
@@ -438,7 +439,7 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
       area: _area,
       address: _address.isEmpty ? '$_area, ${_city ?? ''}' : _address,
     );
-    BusinessProfileScope.of(context).save(profile);
+    await context.read<BusinessProfileNotifier>().save(profile);
     Navigator.of(context).pushReplacementNamed(AppRoutes.homeShell);
   }
 

@@ -1,7 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
+import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class BillDetailsScreen extends StatelessWidget {
   const BillDetailsScreen({super.key, required this.billId});
@@ -10,7 +11,7 @@ class BillDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bill = LocalBillingStore.getById(billId);
+    final bill = context.watch<BillingStore>().getById(billId);
     if (bill == null) {
       return const Scaffold(
         body: Center(child: Text('Bill not found.')),

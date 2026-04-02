@@ -1,17 +1,18 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
-import 'package:hairsaloon/src/features/employees/data/local_employees_store.dart';
+import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
+import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class EmployeeEarningsScreen extends StatelessWidget {
   const EmployeeEarningsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final employees = LocalEmployeesStore.employees;
-    final bills = LocalBillingStore.bills;
+    final employees = context.watch<EmployeesStore>().employees;
+    final bills = context.watch<BillingStore>().bills;
 
     final rows = employees.map((employee) {
       final employeeSales = bills

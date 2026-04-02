@@ -1,9 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_scope.dart';
+import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -15,7 +16,7 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profile = BusinessProfileScope.of(context).profile;
+    final profile = context.watch<BusinessProfileNotifier>().profile;
     final businessName = (profile?.businessName.trim().isNotEmpty ?? false)
         ? profile!.businessName
         : 'Sarfaraz Hair Salon';

@@ -1,11 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/employees/data/local_employees_store.dart';
-import 'package:hairsaloon/src/features/expenses/data/local_expenses_store.dart';
 import 'package:hairsaloon/src/features/expenses/domain/entities/expense_item.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expense_analytics_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expense_details_screen.dart';
+import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class AllExpensesScreen extends StatefulWidget {
   const AllExpensesScreen({super.key});
@@ -18,7 +19,7 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
   String _status = 'All';
   String? _employee;
 
-  List<ExpenseItem> get _items => LocalExpensesStore.items;
+  List<ExpenseItem> get _items => context.watch<ExpensesStore>().items;
 
   List<ExpenseItem> get _filtered {
     var list = _items;
@@ -33,7 +34,7 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final employees = LocalEmployeesStore.employees.map((e) => e.fullName).toList();
+    final employees = context.watch<EmployeesStore>().employees.map((e) => e.fullName).toList();
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
       appBar: AppBar(
@@ -170,7 +171,7 @@ class _AllExpensesScreenState extends State<AllExpensesScreen> {
                   ),
                 );
                 if (shouldDelete != true) return;
-                setState(() => LocalExpensesStore.delete(item.id));
+                context.read<ExpensesStore>().delete(item.id);
               },
               icon: const Icon(CupertinoIcons.delete, size: 18, color: Color(0xFFE45A5A)),
             ),

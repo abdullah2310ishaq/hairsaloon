@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/services/data/local_category_store.dart';
-import 'package:hairsaloon/src/features/services/data/local_services_store.dart';
+import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class SubcategoriesScreen extends StatefulWidget {
   const SubcategoriesScreen({super.key, this.initialCategory});
@@ -20,7 +20,7 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
   @override
   void initState() {
     super.initState();
-    final categories = LocalCategoryStore.categories;
+    final categories = context.read<ServicesStore>().categories;
     final requested = widget.initialCategory;
     if (requested != null && categories.contains(requested)) {
       _selectedCategory = requested;
@@ -36,11 +36,11 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
   }
 
   List<String> get _subcategories =>
-      LocalCategoryStore.subcategoriesFor(_selectedCategory);
+      context.watch<ServicesStore>().subcategoriesFor(_selectedCategory);
 
   @override
   Widget build(BuildContext context) {
-    final categories = LocalCategoryStore.categories;
+    final categories = context.watch<ServicesStore>().categories;
     final subcategories = _subcategories;
 
     return Scaffold(
@@ -138,12 +138,10 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
                   return;
                 }
                 if (value == 'delete') {
-                  setState(() {
-                    LocalCategoryStore.deleteSubcategory(
-                      category: _selectedCategory,
-                      subcategory: name,
-                    );
-                  });
+                  context.read<ServicesStore>().deleteSubcategory(
+                    category: _selectedCategory,
+                    subcategory: name,
+                  );
                 }
               },
               itemBuilder: (context) => const [
@@ -180,26 +178,25 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
     );
   }
 
-  void _saveSubcategory() {
+  Future<void> _saveSubcategory() async {
     final value = _subcategoryController.text.trim();
-    final added = LocalCategoryStore.addSubcategory(
+    final added = await context.read<ServicesStore>().addSubcategory(
       category: _selectedCategory,
       subcategory: value,
     );
     if (!added) return;
 
     _subcategoryController.clear();
-    setState(() {});
   }
 
   Future<void> _showEditSubcategoryDialog(String oldName) async {
     final nameController = TextEditingController(text: oldName);
     final currentPrice =
-        LocalServicesStore.serviceFor(
+        context.read<ServicesStore>().serviceFor(
           category: _selectedCategory,
           subcategory: oldName,
         )?.price ??
-        LocalServicesStore.seededPrice(_selectedCategory, oldName);
+        context.read<ServicesStore>().seededPrice(_selectedCategory, oldName);
     final priceController = TextEditingController(
       text: currentPrice.toStringAsFixed(0),
     );
@@ -245,7 +242,7 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
       return;
     }
 
-    final renamed = LocalCategoryStore.renameSubcategory(
+    final renamed = await context.read<ServicesStore>().renameSubcategory(
       category: _selectedCategory,
       oldName: oldName,
       newName: newName,
@@ -255,17 +252,11 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
       return;
     }
 
-    LocalServicesStore.renameSubcategory(
-      category: _selectedCategory,
-      oldName: oldName,
-      newName: newName,
-    );
-    LocalServicesStore.updatePriceForSubcategory(
+    await context.read<ServicesStore>().updatePriceForSubcategory(
       category: _selectedCategory,
       subcategory: newName,
       price: parsedPrice,
     );
-    setState(() {});
     _showMessage('Subcategory updated.');
   }
 

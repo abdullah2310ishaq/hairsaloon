@@ -1,15 +1,16 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
+import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class SavedBillsScreen extends StatelessWidget {
   const SavedBillsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final bills = LocalBillingStore.bills;
+    final bills = context.watch<BillingStore>().bills;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),

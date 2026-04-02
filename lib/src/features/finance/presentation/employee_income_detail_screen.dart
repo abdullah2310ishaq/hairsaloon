@@ -1,9 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
+import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class EmployeeIncomeDetailScreen extends StatelessWidget {
   const EmployeeIncomeDetailScreen({super.key, required this.employee});
@@ -12,19 +14,32 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bills = LocalBillingStore.bills
+    final employeeName = employee.fullName.trim().toLowerCase();
+    final bills = context
+        .watch<BillingStore>()
+        .bills
         .where((bill) => bill.employeeName == employee.fullName)
+        .toList(growable: false);
+    final expenses = context
+        .watch<ExpensesStore>()
+        .items
+        .where(
+          (item) =>
+              item.employeeName.trim().toLowerCase() == employeeName &&
+              item.status.trim().toLowerCase() == 'unpaid',
+        )
         .toList(growable: false);
     final dailyRows = _buildDailyRows(bills, _toDouble(employee.commission));
 
-    final totalEarning = dailyRows.fold<double>(
+    final totalEarning = bills.fold<double>(
       0,
-      (sum, row) => sum + row.earningAmount,
+      (sum, bill) => sum + bill.grandTotal,
     );
-    final totalDue = dailyRows.fold<double>(
-      0,
-      (sum, row) => sum + row.dueAmount,
+    final totalDue = expenses.fold<double>(
+      0.0,
+      (sum, item) => sum + item.amount,
     );
+    final safeDue = totalDue < 0 ? 0.0 : totalDue;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -35,9 +50,17 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
               employee: employee,
               bills: bills,
               totalEarning: totalEarning,
-              totalDue: totalDue,
+              totalDue: safeDue,
             ),
           ),
+          const SliverToBoxAdapter(child: SizedBox(height: 60)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: _dueAmountCard(safeDue),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 12)),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
@@ -111,7 +134,7 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
             date: entry.key,
             earningAmount: earningAmount,
             paidAmount: paidAmount,
-            dueAmount: dueAmount < 0 ? 0 : dueAmount,
+            dueAmount: dueAmount < 0 ? 0.0 : dueAmount,
           );
         })
         .toList(growable: false);
@@ -143,7 +166,7 @@ class _TopSection extends StatelessWidget {
       children: [
         Container(
           color: AppColors.primary,
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 74),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 90),
           child: SafeArea(
             bottom: false,
             child: Column(
@@ -218,7 +241,7 @@ class _TopSection extends StatelessWidget {
         Positioned(
           left: 12,
           right: 12,
-          bottom: -44,
+          bottom: -48,
           child: _totalEarningCard(totalEarning),
         ),
       ],
@@ -285,6 +308,66 @@ class _TopSection extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _dueAmountCard(double dueAmount) {
+  final safeDue = dueAmount < 0 ? 0.0 : dueAmount;
+  final isSettled = safeDue <= 0;
+  return Container(
+    padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      children: [
+        const Icon(
+          CupertinoIcons.money_dollar_circle,
+          color: AppColors.danger,
+          size: 22,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Due Amount',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                _formatCurrency(safeDue),
+                style: const TextStyle(
+                  color: AppColors.danger,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                  height: 1.0,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 34,
+          child: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: isSettled ? const Color(0xFFC5C5C5) : AppColors.primary,
+              foregroundColor: AppColors.textPrimary,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+            ),
+            onPressed: isSettled ? null : () {},
+            child: const Text('Settle Up'),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _DailyIncomeTile extends StatelessWidget {
@@ -409,7 +492,7 @@ class _DailyIncomeTile extends StatelessWidget {
       width: 1,
       height: 30,
       color: const Color(0xFFE2E2E2),
-      margin: const EdgeInsets.symmetric(horizontal: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 12),
     );
   }
 }

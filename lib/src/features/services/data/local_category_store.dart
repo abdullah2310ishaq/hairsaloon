@@ -1,5 +1,6 @@
 import 'dart:collection';
 
+@Deprecated('Use ServicesStore + HiveServicesRepository instead.')
 class LocalCategoryStore {
   LocalCategoryStore._();
 

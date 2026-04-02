@@ -1,9 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
+import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/customers/presentation/customer_history_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class CustomersScreen extends StatefulWidget {
   const CustomersScreen({super.key});
@@ -13,9 +14,9 @@ class CustomersScreen extends StatefulWidget {
 }
 
 class _CustomersScreenState extends State<CustomersScreen> {
-  Map<String, List<Bill>> get _groupedCustomers {
+  Map<String, List<Bill>> _groupedCustomers(List<Bill> bills) {
     final grouped = <String, List<Bill>>{};
-    for (final bill in LocalBillingStore.bills) {
+    for (final bill in bills) {
       final name = bill.customerName.trim();
       final phone = bill.customerPhone.trim();
       final key = name.isNotEmpty
@@ -28,7 +29,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final customers = _groupedCustomers.entries.toList()
+    final bills = context.watch<BillingStore>().bills;
+    final customers = _groupedCustomers(bills).entries.toList()
       ..sort((a, b) => b.value.first.createdAt.compareTo(a.value.first.createdAt));
 
     return Scaffold(

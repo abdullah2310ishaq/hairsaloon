@@ -1,11 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/expenses/data/local_expenses_store.dart';
 import 'package:hairsaloon/src/features/expenses/domain/entities/expense_item.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/all_expenses_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expense_details_screen.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/expense_types_screen.dart';
+import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -17,7 +18,7 @@ class ExpensesScreen extends StatefulWidget {
 class _ExpensesScreenState extends State<ExpensesScreen> {
   String _statusFilter = 'Paid';
 
-  List<ExpenseItem> get _items => LocalExpensesStore.items;
+  List<ExpenseItem> get _items => context.watch<ExpensesStore>().items;
 
   List<ExpenseItem> get _filteredItems {
     return _items
@@ -207,7 +208,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   MaterialPageRoute(builder: (_) => const ExpenseTypesScreen()),
                 );
                 if (created == null) return;
-                setState(() => LocalExpensesStore.add(created));
+                context.read<ExpensesStore>().add(created);
               },
               icon: const Icon(CupertinoIcons.add_circled, size: 14),
               label: const Text(
@@ -361,7 +362,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                 );
                 if (shouldDelete != true) return;
-                setState(() => LocalExpensesStore.delete(item.id));
+                context.read<ExpensesStore>().delete(item.id);
               },
               icon: const Icon(
                 CupertinoIcons.delete,

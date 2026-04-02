@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hairsaloon/src/features/services/data/local_category_store.dart';
-import 'package:hairsaloon/src/features/services/data/local_services_store.dart';
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
+import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class ServiceListScreen extends StatefulWidget {
   const ServiceListScreen({super.key});
@@ -23,27 +23,21 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   String? _newAgeGroup;
   String _newPrice = '';
 
-  @override
-  void initState() {
-    super.initState();
-    LocalServicesStore.ensureServicesForCurrentSubcategories();
-  }
-
-  List<String> get _categories => ['All', ...LocalCategoryStore.categories];
+  List<String> get _categories => ['All', ...context.watch<ServicesStore>().categories];
   List<String> get _newSubcategories => _newCategory == null
       ? const <String>[]
-      : LocalCategoryStore.subcategoriesFor(_newCategory!);
+      : context.watch<ServicesStore>().subcategoriesFor(_newCategory!);
 
   List<String> get _visibleCategories {
     if (_selectedCategoryTab == 'All') {
-      return LocalCategoryStore.categories;
+      return context.watch<ServicesStore>().categories;
     }
     return <String>[_selectedCategoryTab];
   }
 
   @override
   Widget build(BuildContext context) {
-    final categories = LocalCategoryStore.categories;
+    final categories = context.watch<ServicesStore>().categories;
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
       appBar: AppBar(
@@ -127,9 +121,8 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                 ..._visibleCategories.map(
                   (category) => _CategoryTile(
                     category: category,
-                    subcategoryCount: LocalCategoryStore.subcategoriesFor(
-                      category,
-                    ).length,
+                    subcategoryCount:
+                        context.watch<ServicesStore>().subcategoriesFor(category).length,
                     onTap: () => _openCategoryRates(category),
                   ),
                 ),
@@ -347,7 +340,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     );
   }
 
-  void _saveService() {
+  Future<void> _saveService() async {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
     if (_newCategory == null ||
@@ -358,7 +351,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     }
 
     setState(() {
-      LocalServicesStore.addService(
+      context.read<ServicesStore>().addService(
         ServiceItem(
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           category: _newCategory!,
@@ -460,11 +453,10 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
   @override
   void initState() {
     super.initState();
-    LocalServicesStore.ensureServicesForCurrentSubcategories();
   }
 
   List<String> get _subcategories =>
-      LocalCategoryStore.subcategoriesFor(widget.category);
+      context.watch<ServicesStore>().subcategoriesFor(widget.category);
 
   @override
   Widget build(BuildContext context) {
@@ -494,13 +486,13 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
         itemCount: subcategories.length,
         itemBuilder: (context, index) {
           final subcategory = subcategories[index];
-          final service = LocalServicesStore.serviceFor(
+          final service = context.watch<ServicesStore>().serviceFor(
             category: widget.category,
             subcategory: subcategory,
           );
           final price =
               service?.price ??
-              LocalServicesStore.seededPrice(widget.category, subcategory);
+              context.watch<ServicesStore>().seededPrice(widget.category, subcategory);
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -601,7 +593,7 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
       return;
     }
 
-    final renamed = LocalCategoryStore.renameSubcategory(
+    final renamed = await context.read<ServicesStore>().renameSubcategory(
       category: widget.category,
       oldName: oldSubcategory,
       newName: newName,
@@ -611,12 +603,7 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
       return;
     }
 
-    LocalServicesStore.renameSubcategory(
-      category: widget.category,
-      oldName: oldSubcategory,
-      newName: newName,
-    );
-    LocalServicesStore.updatePriceForSubcategory(
+    await context.read<ServicesStore>().updatePriceForSubcategory(
       category: widget.category,
       subcategory: newName,
       price: parsedPrice,
