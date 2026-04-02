@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/services/data/local_category_store.dart';
 import 'package:hairsaloon/src/features/services/data/local_services_store.dart';
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
-import 'package:hairsaloon/src/features/services/presentation/service_details_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class ServiceListScreen extends StatefulWidget {
@@ -23,21 +22,28 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   String? _newGender;
   String? _newAgeGroup;
   String _newPrice = '';
-  List<ServiceItem> get _services => LocalServicesStore.services;
+
+  @override
+  void initState() {
+    super.initState();
+    LocalServicesStore.ensureServicesForCurrentSubcategories();
+  }
+
   List<String> get _categories => ['All', ...LocalCategoryStore.categories];
   List<String> get _newSubcategories => _newCategory == null
       ? const <String>[]
       : LocalCategoryStore.subcategoriesFor(_newCategory!);
 
-  List<ServiceItem> get _filteredServices {
-    if (_selectedCategoryTab == 'All') return List<ServiceItem>.from(_services);
-    return _services
-        .where((s) => s.category == _selectedCategoryTab)
-        .toList(growable: false);
+  List<String> get _visibleCategories {
+    if (_selectedCategoryTab == 'All') {
+      return LocalCategoryStore.categories;
+    }
+    return <String>[_selectedCategoryTab];
   }
 
   @override
   Widget build(BuildContext context) {
+    final categories = LocalCategoryStore.categories;
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
       appBar: AppBar(
@@ -50,7 +56,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
           color: Colors.black,
         ),
         title: Text(
-          'Rate List (${_services.length.toString().padLeft(2, '0')})',
+          'Rate List (${categories.length.toString().padLeft(2, '0')})',
           style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.w700,
@@ -118,42 +124,13 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                   _buildAddFormCard(context),
                   const SizedBox(height: 14),
                 ],
-                ..._filteredServices.map(
-                  (item) => _ServiceTile(
-                    item: item,
-                    onTap: () => _openDetails(item),
-                    onEdit: () => _openDetails(item),
-                    onDelete: () async {
-                      final shouldDelete = await showDialog<bool>(
-                        context: context,
-                        builder: (dialogContext) {
-                          return AlertDialog(
-                            title: const Text('Delete Service'),
-                            content: Text(
-                              'Are you sure you want to delete "${item.subcategory}"?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(dialogContext).pop(false);
-                                },
-                                child: const Text('Cancel'),
-                              ),
-                              FilledButton(
-                                onPressed: () {
-                                  Navigator.of(dialogContext).pop(true);
-                                },
-                                child: const Text('Delete'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                      if (shouldDelete != true) return;
-                      setState(() {
-                        LocalServicesStore.deleteService(item.id);
-                      });
-                    },
+                ..._visibleCategories.map(
+                  (category) => _CategoryTile(
+                    category: category,
+                    subcategoryCount: LocalCategoryStore.subcategoriesFor(
+                      category,
+                    ).length,
+                    onTap: () => _openCategoryRates(category),
                   ),
                 ),
               ],
@@ -402,30 +379,27 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     });
   }
 
-  Future<void> _openDetails(ServiceItem item) async {
-    final updated = await Navigator.of(context).push<ServiceItem>(
-      MaterialPageRoute(builder: (_) => ServiceDetailsScreen(item: item)),
+  Future<void> _openCategoryRates(String category) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _CategoryRatesScreen(category: category),
+      ),
     );
-    if (updated == null) return;
-
-    setState(() {
-      LocalServicesStore.updateService(updated);
-    });
+    if (!mounted) return;
+    setState(() {});
   }
 }
 
-class _ServiceTile extends StatelessWidget {
-  const _ServiceTile({
-    required this.item,
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({
+    required this.category,
+    required this.subcategoryCount,
     required this.onTap,
-    required this.onEdit,
-    required this.onDelete,
   });
 
-  final ServiceItem item;
+  final String category;
+  final int subcategoryCount;
   final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -446,63 +420,108 @@ class _ServiceTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.category,
+                        category,
                         style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.blue,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        item.subcategory,
+                        '$subcategoryCount subcategories',
                         style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          color: Colors.black54,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Text(
-                  item.gender,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  item.ageGroup,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  'Rs.${item.price.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.green,
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'edit') onEdit();
-                    if (value == 'delete') onDelete();
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Edit Details')),
-                    PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                  icon: const Icon(CupertinoIcons.ellipsis_vertical),
-                ),
+                const Icon(CupertinoIcons.chevron_right, size: 18),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CategoryRatesScreen extends StatelessWidget {
+  const _CategoryRatesScreen({required this.category});
+
+  final String category;
+
+  @override
+  Widget build(BuildContext context) {
+    LocalServicesStore.ensureServicesForCurrentSubcategories();
+    final subcategories = LocalCategoryStore.subcategoriesFor(category);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F3F3),
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(CupertinoIcons.back),
+          color: Colors.black,
+        ),
+        title: Text(
+          '$category (${subcategories.length.toString().padLeft(2, '0')})',
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      body: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+        itemCount: subcategories.length,
+        itemBuilder: (context, index) {
+          final subcategory = subcategories[index];
+          final service = LocalServicesStore.serviceFor(
+            category: category,
+            subcategory: subcategory,
+          );
+          final price =
+              service?.price ??
+              LocalServicesStore.seededPrice(category, subcategory);
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      subcategory,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Rs.${price.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

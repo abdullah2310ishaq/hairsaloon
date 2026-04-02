@@ -31,14 +31,6 @@ class _AppDrawerState extends State<AppDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = BusinessProfileScope.of(context).profile;
-    final businessName = (profile?.businessName.trim().isNotEmpty ?? false)
-        ? profile!.businessName
-        : 'My Business';
-    final city = (profile?.city.trim().isNotEmpty ?? false)
-        ? profile!.city
-        : 'Islamabad';
-
     return Drawer(
       backgroundColor: _C.bg,
       surfaceTintColor: Colors.transparent,
@@ -54,14 +46,14 @@ class _AppDrawerState extends State<AppDrawer> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Header ──────────────────────────────────────────────────
-            _buildHeader(businessName, city),
+            _buildHeader(),
 
             const SizedBox(height: 8),
 
             // ── Menu list ────────────────────────────────────────────────
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                 children: [
                   _SectionLabel('GENERAL'),
                   _Item(
@@ -82,7 +74,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       Navigator.of(context).pushNamed(AppRoutes.customers);
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   _SectionLabel('CATALOGUE'),
                   _Item(
                     icon: CupertinoIcons.list_bullet_indent,
@@ -92,7 +84,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       Navigator.of(context).pushNamed(AppRoutes.categories);
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   _SectionLabel('FINANCE'),
                   _Item(
                     icon: CupertinoIcons.creditcard,
@@ -129,10 +121,10 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   // ─── Header ───────────────────────────────────────────────────────────────
-  Widget _buildHeader(String name, String city) {
+  Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 18),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: _C.border, width: 1)),
       ),
@@ -142,25 +134,13 @@ class _AppDrawerState extends State<AppDrawer> {
           // App icon + name row
           Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: _C.lime,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  CupertinoIcons.scissors,
-                  color: Colors.black,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
+              const Text("  "),
+              const SizedBox(width: 60),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Business COMB',
+                    'Saloon Management',
                     style: TextStyle(
                       color: _C.textPrimary,
                       fontSize: 16,
@@ -168,82 +148,9 @@ class _AppDrawerState extends State<AppDrawer> {
                       letterSpacing: -0.3,
                     ),
                   ),
-                  const SizedBox(height: 1),
-                  Text(
-                    'Salon Manager',
-                    style: TextStyle(
-                      color: _C.textSecondary,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
                 ],
               ),
             ],
-          ),
-          const SizedBox(height: 22),
-          // Business card
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _C.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _C.border, width: 1),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: _C.lime.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    CupertinoIcons.building_2_fill,
-                    color: _C.lime,
-                    size: 17,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          color: _C.textPrimary,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          const Icon(
-                            CupertinoIcons.location_solid,
-                            size: 10,
-                            color: _C.textSecondary,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            city,
-                            style: const TextStyle(
-                              color: _C.textSecondary,
-                              fontSize: 11.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -512,7 +419,7 @@ class _Item extends StatelessWidget {
           splashColor: _C.lime.withOpacity(0.06),
           highlightColor: _C.lime.withOpacity(0.04),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
               children: [
                 // Icon container
@@ -563,14 +470,14 @@ class _TaxBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: _C.lime.withOpacity(0.12),
+        color: _C.surfaceHigh,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _C.lime.withOpacity(0.3), width: 1),
+        border: Border.all(color: _C.border, width: 1),
       ),
       child: Text(
         '${LocalTaxRateStore.taxRate.toStringAsFixed(0)}%',
         style: const TextStyle(
-          color: _C.lime,
+          color: Colors.black,
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.2,

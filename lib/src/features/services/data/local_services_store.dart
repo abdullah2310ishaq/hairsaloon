@@ -124,6 +124,47 @@ class LocalServicesStore {
 
   static List<String> get categories => LocalCategoryStore.categories;
 
+  static ServiceItem? serviceFor({
+    required String category,
+    required String subcategory,
+  }) {
+    try {
+      return _services.firstWhere(
+        (item) => item.category == category && item.subcategory == subcategory,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static void ensureServicesForCurrentSubcategories() {
+    for (final category in LocalCategoryStore.categories) {
+      final subcategories = LocalCategoryStore.subcategoriesFor(category);
+      for (final subcategory in subcategories) {
+        final exists = _services.any(
+          (item) =>
+              item.category == category && item.subcategory == subcategory,
+        );
+        if (exists) continue;
+
+        _services.add(
+          ServiceItem(
+            id: '${DateTime.now().microsecondsSinceEpoch}_${category}_$subcategory',
+            category: category,
+            subcategory: subcategory,
+            gender: 'Other',
+            ageGroup: 'Adult',
+            price: _seededPrice(category, subcategory),
+          ),
+        );
+      }
+    }
+  }
+
+  static double seededPrice(String category, String subcategory) {
+    return _seededPrice(category, subcategory);
+  }
+
   static void addService(ServiceItem service) {
     _services.insert(0, service);
   }
@@ -136,5 +177,14 @@ class LocalServicesStore {
 
   static void deleteService(String id) {
     _services.removeWhere((e) => e.id == id);
+  }
+
+  static double _seededPrice(String category, String subcategory) {
+    final hash = (category + subcategory).codeUnits.fold<int>(
+      0,
+      (value, unit) => value + unit,
+    );
+    final bucket = hash % 31; // 0..30
+    return (300 + (bucket * 100)).toDouble(); // 300..3300
   }
 }
