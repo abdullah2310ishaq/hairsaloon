@@ -179,6 +179,58 @@ class LocalServicesStore {
     _services.removeWhere((e) => e.id == id);
   }
 
+  static void renameSubcategory({
+    required String category,
+    required String oldName,
+    required String newName,
+  }) {
+    final normalizedOld = oldName.trim();
+    final normalizedNew = newName.trim();
+    if (normalizedOld.isEmpty || normalizedNew.isEmpty) return;
+
+    for (var i = 0; i < _services.length; i++) {
+      final service = _services[i];
+      if (service.category != category) continue;
+      if (service.subcategory.toLowerCase() != normalizedOld.toLowerCase()) {
+        continue;
+      }
+      _services[i] = service.copyWith(subcategory: normalizedNew);
+    }
+  }
+
+  static void updatePriceForSubcategory({
+    required String category,
+    required String subcategory,
+    required double price,
+  }) {
+    if (price <= 0) return;
+    final normalized = subcategory.trim();
+    if (normalized.isEmpty) return;
+
+    var found = false;
+    for (var i = 0; i < _services.length; i++) {
+      final service = _services[i];
+      if (service.category != category) continue;
+      if (service.subcategory.toLowerCase() != normalized.toLowerCase()) {
+        continue;
+      }
+      _services[i] = service.copyWith(price: price);
+      found = true;
+    }
+
+    if (found) return;
+    _services.add(
+      ServiceItem(
+        id: '${DateTime.now().microsecondsSinceEpoch}_${category}_$subcategory',
+        category: category,
+        subcategory: normalized,
+        gender: 'Other',
+        ageGroup: 'Adult',
+        price: price,
+      ),
+    );
+  }
+
   static double _seededPrice(String category, String subcategory) {
     final hash = (category + subcategory).codeUnits.fold<int>(
       0,

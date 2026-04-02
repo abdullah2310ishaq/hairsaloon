@@ -9,10 +9,11 @@ class CategoriesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final categories = LocalCategoryStore.categories;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         surfaceTintColor: Colors.transparent,
@@ -31,12 +32,17 @@ class CategoriesScreen extends StatelessWidget {
         ),
       ),
       body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+        padding: const EdgeInsets.fromLTRB(12, 16, 12, 14),
         itemBuilder: (context, index) {
           final category = categories[index];
           return Material(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            color: theme.colorScheme.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: theme.dividerColor.withValues(alpha: 0.35),
+              ),
+            ),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: () {
@@ -58,8 +64,8 @@ class CategoriesScreen extends StatelessWidget {
                       child: Text(
                         category,
                         style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                           color: Colors.black,
                         ),
                       ),

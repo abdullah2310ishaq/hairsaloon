@@ -5,6 +5,7 @@ import 'package:hairsaloon/src/features/auth/presentation/business_registration_
 import 'package:hairsaloon/src/features/auth/presentation/login_screen.dart';
 import 'package:hairsaloon/src/features/billing/presentation/bill_details_screen.dart';
 import 'package:hairsaloon/src/features/billing/presentation/saved_bills_screen.dart';
+import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
 import 'package:hairsaloon/src/features/business_profile/data/repositories/shared_prefs_business_profile_repository.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/clear_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/get_business_profile.dart';
@@ -190,6 +191,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
 
   Future<_AppBootstrap> _bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
+    await LocalBillingStore.init(prefs);
     final repository = SharedPrefsBusinessProfileRepository(prefs: prefs);
     final notifier = BusinessProfileNotifier(
       getBusinessProfile: GetBusinessProfile(repository),

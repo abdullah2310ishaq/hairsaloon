@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/services/data/local_category_store.dart';
+import 'package:hairsaloon/src/features/services/data/local_services_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class SubcategoriesScreen extends StatefulWidget {
@@ -132,15 +133,21 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
             ),
             PopupMenuButton<String>(
               onSelected: (value) {
-                if (value != 'delete') return;
-                setState(() {
-                  LocalCategoryStore.deleteSubcategory(
-                    category: _selectedCategory,
-                    subcategory: name,
-                  );
-                });
+                if (value == 'edit') {
+                  _showEditSubcategoryDialog(name);
+                  return;
+                }
+                if (value == 'delete') {
+                  setState(() {
+                    LocalCategoryStore.deleteSubcategory(
+                      category: _selectedCategory,
+                      subcategory: name,
+                    );
+                  });
+                }
               },
               itemBuilder: (context) => const [
+                PopupMenuItem<String>(value: 'edit', child: Text('Edit')),
                 PopupMenuItem<String>(value: 'delete', child: Text('Delete')),
               ],
               icon: const Icon(CupertinoIcons.ellipsis_vertical),
@@ -183,5 +190,88 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
 
     _subcategoryController.clear();
     setState(() {});
+  }
+
+  Future<void> _showEditSubcategoryDialog(String oldName) async {
+    final nameController = TextEditingController(text: oldName);
+    final currentPrice =
+        LocalServicesStore.serviceFor(
+          category: _selectedCategory,
+          subcategory: oldName,
+        )?.price ??
+        LocalServicesStore.seededPrice(_selectedCategory, oldName);
+    final priceController = TextEditingController(
+      text: currentPrice.toStringAsFixed(0),
+    );
+
+    final shouldUpdate = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit Subcategory'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(hintText: 'Subcategory name'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: priceController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(hintText: 'Price'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldUpdate != true || !mounted) return;
+
+    final newName = nameController.text.trim();
+    final parsedPrice = double.tryParse(priceController.text.trim());
+    if (newName.isEmpty || parsedPrice == null || parsedPrice <= 0) {
+      _showMessage('Enter valid subcategory and price.');
+      return;
+    }
+
+    final renamed = LocalCategoryStore.renameSubcategory(
+      category: _selectedCategory,
+      oldName: oldName,
+      newName: newName,
+    );
+    if (!renamed) {
+      _showMessage('Unable to update. Name may already exist.');
+      return;
+    }
+
+    LocalServicesStore.renameSubcategory(
+      category: _selectedCategory,
+      oldName: oldName,
+      newName: newName,
+    );
+    LocalServicesStore.updatePriceForSubcategory(
+      category: _selectedCategory,
+      subcategory: newName,
+      price: parsedPrice,
+    );
+    setState(() {});
+    _showMessage('Subcategory updated.');
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
   }
 }

@@ -447,15 +447,28 @@ class _CategoryTile extends StatelessWidget {
   }
 }
 
-class _CategoryRatesScreen extends StatelessWidget {
+class _CategoryRatesScreen extends StatefulWidget {
   const _CategoryRatesScreen({required this.category});
 
   final String category;
 
   @override
-  Widget build(BuildContext context) {
+  State<_CategoryRatesScreen> createState() => _CategoryRatesScreenState();
+}
+
+class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
+  @override
+  void initState() {
+    super.initState();
     LocalServicesStore.ensureServicesForCurrentSubcategories();
-    final subcategories = LocalCategoryStore.subcategoriesFor(category);
+  }
+
+  List<String> get _subcategories =>
+      LocalCategoryStore.subcategoriesFor(widget.category);
+
+  @override
+  Widget build(BuildContext context) {
+    final subcategories = _subcategories;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
@@ -469,7 +482,7 @@ class _CategoryRatesScreen extends StatelessWidget {
           color: Colors.black,
         ),
         title: Text(
-          '$category (${subcategories.length.toString().padLeft(2, '0')})',
+          '${widget.category} (${subcategories.length.toString().padLeft(2, '0')})',
           style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.w700,
@@ -482,12 +495,12 @@ class _CategoryRatesScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final subcategory = subcategories[index];
           final service = LocalServicesStore.serviceFor(
-            category: category,
+            category: widget.category,
             subcategory: subcategory,
           );
           final price =
               service?.price ??
-              LocalServicesStore.seededPrice(category, subcategory);
+              LocalServicesStore.seededPrice(widget.category, subcategory);
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -517,12 +530,105 @@ class _CategoryRatesScreen extends StatelessWidget {
                       color: Colors.green,
                     ),
                   ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: () => _showEditDialog(
+                      oldSubcategory: subcategory,
+                      currentPrice: price,
+                    ),
+                    icon: const Icon(CupertinoIcons.pencil, size: 18),
+                    color: Colors.black54,
+                    tooltip: 'Edit',
+                  ),
                 ],
               ),
             ),
           );
         },
       ),
+    );
+  }
+
+  Future<void> _showEditDialog({
+    required String oldSubcategory,
+    required double currentPrice,
+  }) async {
+    final nameController = TextEditingController(text: oldSubcategory);
+    final priceController = TextEditingController(
+      text: currentPrice.toStringAsFixed(0),
+    );
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit Subcategory'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(hintText: 'Subcategory name'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: priceController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(hintText: 'Price'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Update'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != true || !mounted) return;
+
+    final newName = nameController.text.trim();
+    final parsedPrice = double.tryParse(priceController.text.trim());
+    if (newName.isEmpty || parsedPrice == null || parsedPrice <= 0) {
+      _showMessage('Enter a valid subcategory name and price.');
+      return;
+    }
+
+    final renamed = LocalCategoryStore.renameSubcategory(
+      category: widget.category,
+      oldName: oldSubcategory,
+      newName: newName,
+    );
+    if (!renamed) {
+      _showMessage('Unable to update. Name may already exist.');
+      return;
+    }
+
+    LocalServicesStore.renameSubcategory(
+      category: widget.category,
+      oldName: oldSubcategory,
+      newName: newName,
+    );
+    LocalServicesStore.updatePriceForSubcategory(
+      category: widget.category,
+      subcategory: newName,
+      price: parsedPrice,
+    );
+
+    setState(() {});
+    _showMessage('Subcategory updated.');
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
     );
   }
 }

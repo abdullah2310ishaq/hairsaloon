@@ -78,4 +78,32 @@ class LocalCategoryStore {
       (item) => item.toLowerCase() == subcategory.trim().toLowerCase(),
     );
   }
+
+  static bool renameSubcategory({
+    required String category,
+    required String oldName,
+    required String newName,
+  }) {
+    final values = _subcategoriesByCategory[category];
+    if (values == null) return false;
+
+    final normalizedOld = oldName.trim();
+    final normalizedNew = newName.trim();
+    if (normalizedOld.isEmpty || normalizedNew.isEmpty) return false;
+
+    final index = values.indexWhere(
+      (item) => item.toLowerCase() == normalizedOld.toLowerCase(),
+    );
+    if (index == -1) return false;
+
+    final duplicate = values.any(
+      (item) =>
+          item.toLowerCase() == normalizedNew.toLowerCase() &&
+          item.toLowerCase() != normalizedOld.toLowerCase(),
+    );
+    if (duplicate) return false;
+
+    values[index] = normalizedNew;
+    return true;
+  }
 }
