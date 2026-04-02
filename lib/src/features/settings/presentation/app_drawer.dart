@@ -104,8 +104,12 @@ class _AppDrawerState extends State<AppDrawer> {
                     title: 'Tax Rate',
                     trailing: _TaxBadge(),
                     onTap: () async {
+                      final rootNavigator = Navigator.of(
+                        context,
+                        rootNavigator: true,
+                      );
                       Navigator.pop(context);
-                      await _showTaxRateDialog(context);
+                      await _showTaxRateDialog(rootNavigator.context);
                     },
                   ),
                 ],
@@ -240,7 +244,7 @@ class _AppDrawerState extends State<AppDrawer> {
     final controller = TextEditingController(
       text: LocalTaxRateStore.taxRate.toStringAsFixed(0),
     );
-    await showDialog<void>(
+    final didSave = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: _C.surfaceHigh,
@@ -265,15 +269,15 @@ class _AppDrawerState extends State<AppDrawer> {
             fillColor: _C.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _C.border),
+              borderSide: const BorderSide(color: Colors.black),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _C.lime, width: 1.5),
+              borderSide: const BorderSide(color: Colors.black, width: 1.5),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _C.border),
+              borderSide: const BorderSide(color: Colors.black),
             ),
           ),
         ),
@@ -296,11 +300,11 @@ class _AppDrawerState extends State<AppDrawer> {
             onPressed: () {
               final value = double.tryParse(controller.text.trim());
               if (value == null || value < 0) {
-                Navigator.of(dialogContext).pop();
+                Navigator.of(dialogContext).pop(false);
                 return;
               }
-              setState(() => LocalTaxRateStore.setTaxRate(value));
-              Navigator.of(dialogContext).pop();
+              LocalTaxRateStore.setTaxRate(value);
+              Navigator.of(dialogContext).pop(true);
             },
             child: const Text(
               'Save',
@@ -308,6 +312,14 @@ class _AppDrawerState extends State<AppDrawer> {
             ),
           ),
         ],
+      ),
+    );
+    if (didSave != true) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      const SnackBar(
+        content: Text('Tax rate saved'),
+        duration: Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

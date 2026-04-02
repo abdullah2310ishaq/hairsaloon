@@ -1,257 +1,543 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/data/local_billing_store.dart';
-import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
+import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:hairsaloon/src/features/employees/data/local_employees_store.dart';
+import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/expenses/data/local_expenses_store.dart';
-import 'package:hairsaloon/src/features/router/app_routes.dart';
+import 'package:hairsaloon/src/features/finance/presentation/employee_income_detail_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
-class FinanceOverviewScreen extends StatelessWidget {
+class FinanceOverviewScreen extends StatefulWidget {
   const FinanceOverviewScreen({super.key});
 
   @override
+  State<FinanceOverviewScreen> createState() => _FinanceOverviewScreenState();
+}
+
+class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
+  DateTime _selectedDate = DateTime.now();
+
+  @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
     final bills = LocalBillingStore.bills;
     final expenses = LocalExpensesStore.items;
     final employees = LocalEmployeesStore.employees;
 
-    final totalRevenue = bills.fold<double>(0, (sum, b) => sum + b.grandTotal);
-    final thisMonthRevenue = bills
-        .where((b) => b.createdAt.year == now.year && b.createdAt.month == now.month)
-        .fold<double>(0, (sum, b) => sum + b.grandTotal);
     final todayRevenue = bills
-        .where(
-          (b) =>
-              b.createdAt.year == now.year &&
-              b.createdAt.month == now.month &&
-              b.createdAt.day == now.day,
-        )
+        .where((b) => _isSameDate(b.createdAt, _selectedDate))
         .fold<double>(0, (sum, b) => sum + b.grandTotal);
-
-    final paidExpenses = expenses
-        .where((e) => e.status == 'Paid')
+    final todayExpenses = expenses
+        .where((e) => _isSameDate(e.date, _selectedDate))
         .fold<double>(0, (sum, e) => sum + e.amount);
-    final unpaidExpenses = expenses
-        .where((e) => e.status == 'Unpaid')
-        .fold<double>(0, (sum, e) => sum + e.amount);
-    final thisMonthPaidExpenses = expenses
-        .where(
-          (e) =>
-              e.status == 'Paid' && e.date.year == now.year && e.date.month == now.month,
-        )
-        .fold<double>(0, (sum, e) => sum + e.amount);
-
-    final netProfit = totalRevenue - paidExpenses;
-    final activeEmployees = employees.where((e) => e.isActive).length;
-    final salaryCommitment = employees.fold<double>(
-      0,
-      (sum, e) => sum + _toDouble(e.basicSalary),
-    );
-    final estimatedCommission = bills.fold<double>(0, (sum, bill) {
-      final employee = _findEmployeeByName(employees, bill.employeeName);
-      final percent = _toDouble(employee?.commission);
-      return sum + ((bill.grandTotal * percent) / 100);
-    });
+    final todayProfit = todayRevenue - todayExpenses;
+    final employeeRows = _buildEmployeeRows(_selectedDate, employees, bills);
+    final isSelectedToday = _isSameDate(_selectedDate, DateTime.now());
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(CupertinoIcons.back, color: Colors.black),
-        ),
-        title: const Text(
-          'Finance Overview',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(12),
+      backgroundColor: AppColors.background,
+      body: Column(
         children: [
-          _summaryCard(
-            title: 'Net Profit',
-            value: 'Rs.${netProfit.toStringAsFixed(0)}',
-            subtitle:
-                'Revenue Rs.${totalRevenue.toStringAsFixed(0)} • Paid Expenses Rs.${paidExpenses.toStringAsFixed(0)}',
+          _Header(
+            dateText: _formatDate(_selectedDate),
+            onDateTap: _pickDate,
+            onResetTap: _resetToToday,
+            showReset: !isSelectedToday,
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _smallMetricCard(
-                  label: 'Today Sales',
-                  value: 'Rs.${todayRevenue.toStringAsFixed(0)}',
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+              children: [
+                _todaySaleCard(todayRevenue),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _miniStatCard(
+                        title: 'Profit',
+                        amount: todayProfit,
+                        icon: CupertinoIcons.arrow_up_right,
+                        amountColor: AppColors.success,
+                        iconColor: AppColors.success,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _miniStatCard(
+                        title: 'Expenses',
+                        amount: todayExpenses,
+                        icon: CupertinoIcons.arrow_down_right,
+                        amountColor: AppColors.danger,
+                        iconColor: AppColors.danger,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _smallMetricCard(
-                  label: 'This Month Sales',
-                  value: 'Rs.${thisMonthRevenue.toStringAsFixed(0)}',
+                const SizedBox(height: 14),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 2),
+                  child: Text(
+                    'Employee Income',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _smallMetricCard(
-                  label: 'Paid Expenses',
-                  value: 'Rs.${paidExpenses.toStringAsFixed(0)}',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _smallMetricCard(
-                  label: 'Unpaid Expenses',
-                  value: 'Rs.${unpaidExpenses.toStringAsFixed(0)}',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _smallMetricCard(
-                  label: 'Active Employees',
-                  value: activeEmployees.toString(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _smallMetricCard(
-                  label: 'Monthly Salaries',
-                  value: 'Rs.${salaryCommitment.toStringAsFixed(0)}',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _summaryCard(
-            title: 'Team Cost Insight',
-            value: 'Rs.${(salaryCommitment + estimatedCommission).toStringAsFixed(0)}',
-            subtitle:
-                'Salaries Rs.${salaryCommitment.toStringAsFixed(0)} • Estimated Commission Rs.${estimatedCommission.toStringAsFixed(0)}',
-          ),
-          const SizedBox(height: 10),
-          _summaryCard(
-            title: 'This Month Health',
-            value: 'Rs.${(thisMonthRevenue - thisMonthPaidExpenses).toStringAsFixed(0)}',
-            subtitle:
-                'Month Revenue Rs.${thisMonthRevenue.toStringAsFixed(0)} • Month Paid Expenses Rs.${thisMonthPaidExpenses.toStringAsFixed(0)}',
-          ),
-          const SizedBox(height: 10),
-          _actionTile(
-            title: 'Employee Earnings',
-            subtitle: 'Salary + commission details with real sales',
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.employeeEarnings),
-          ),
-          const SizedBox(height: 8),
-          _actionTile(
-            title: 'Saved Bills',
-            subtitle: 'View all generated bills and totals',
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.savedBills),
-          ),
-          const SizedBox(height: 8),
-          _actionTile(
-            title: 'Customers Finance History',
-            subtitle: 'Customer wise billing history and totals',
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.customers),
+                const SizedBox(height: 8),
+                if (employeeRows.isEmpty)
+                  _emptyStateCard()
+                else
+                  ...employeeRows.map(
+                    (row) => _employeeIncomeTile(context, row),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  static double _toDouble(String? value) {
-    if (value == null || value.trim().isEmpty) return 0;
-    final normalized = value.replaceAll(',', '').replaceAll('%', '').trim();
-    return double.tryParse(normalized) ?? 0;
+  Future<void> _pickDate() async {
+    final initialDate = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null) return;
+    setState(() => _selectedDate = picked);
   }
 
-  static EmployeeItem? _findEmployeeByName(List<EmployeeItem> employees, String name) {
-    for (final employee in employees) {
-      if (employee.fullName == name) return employee;
+  void _resetToToday() {
+    setState(() => _selectedDate = DateTime.now());
+  }
+
+  static bool _isSameDate(DateTime left, DateTime right) {
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
+  }
+
+  static List<_EmployeeIncomeRow> _buildEmployeeRows(
+    DateTime now,
+    List<EmployeeItem> employees,
+    List<Bill> bills,
+  ) {
+    final earningsByEmployee = <String, double>{};
+    for (final bill in bills) {
+      if (!_isSameDate(bill.createdAt, now)) continue;
+      earningsByEmployee.update(
+        bill.employeeName,
+        (existing) => existing + bill.grandTotal,
+        ifAbsent: () => bill.grandTotal,
+      );
     }
-    return null;
+
+    final rows = employees
+        .map(
+          (employee) => _EmployeeIncomeRow(
+            employee: employee,
+            todayEarning: earningsByEmployee[employee.fullName] ?? 0,
+          ),
+        )
+        .toList(growable: false);
+
+    rows.sort((a, b) => b.todayEarning.compareTo(a.todayEarning));
+    return rows;
   }
 
-  Widget _summaryCard({
-    required String title,
-    required String value,
-    required String subtitle,
-  }) {
+  static String _formatDate(DateTime date) {
+    const months = <String>[
+      'JANUARY',
+      'FEBRUARY',
+      'MARCH',
+      'APRIL',
+      'MAY',
+      'JUNE',
+      'JULY',
+      'AUGUST',
+      'SEPTEMBER',
+      'OCTOBER',
+      'NOVEMBER',
+      'DECEMBER',
+    ];
+    return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
+  }
+
+  static String _formatCurrency(double value) {
+    final absolute = value.abs().toStringAsFixed(1);
+    final parts = absolute.split('.');
+    final whole = parts.first;
+    final fraction = parts.last;
+
+    final withCommas = whole.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => ',',
+    );
+
+    final sign = value < 0 ? '-' : '';
+    return 'Rs.$sign$withCommas.$fraction';
+  }
+
+  Widget _todaySaleCard(double amount) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF666666)),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.success.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              CupertinoIcons.money_dollar_circle,
+              color: AppColors.success,
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'TODAY SALE',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                _formatCurrency(amount),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _smallMetricCard({
-    required String label,
-    required String value,
+  Widget _miniStatCard({
+    required String title,
+    required double amount,
+    required IconData icon,
+    required Color amountColor,
+    required Color iconColor,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-        ],
+    return SizedBox(
+      height: 120,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(height: 5),
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              _formatCurrency(amount),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: amountColor,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _actionTile({
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        onTap: onTap,
-        title: Text(
-          title,
-          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+  Widget _employeeIncomeTile(BuildContext context, _EmployeeIncomeRow row) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    EmployeeIncomeDetailScreen(employee: row.employee),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
+            child: Row(
+              children: [
+                _EmployeeAvatar(employeeId: row.employee.id),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        row.employee.speciality?.trim().isNotEmpty == true
+                            ? row.employee.speciality!
+                            : 'General Specialist',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        row.employee.fullName,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'Today Earning',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _formatCurrency(row.todayEarning),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 6),
+                const Icon(
+                  CupertinoIcons.chevron_right,
+                  color: AppColors.textSecondary,
+                  size: 14,
+                ),
+              ],
+            ),
+          ),
         ),
-        subtitle: Text(
-          subtitle,
-          style: const TextStyle(fontSize: 10.5),
+      ),
+    );
+  }
+
+  Widget _emptyStateCard() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Text(
+        'No employee data available.',
+        style: TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
         ),
-        trailing: const Icon(CupertinoIcons.chevron_right, size: 15),
       ),
     );
   }
 }
 
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.dateText,
+    required this.onDateTap,
+    required this.onResetTap,
+    required this.showReset,
+  });
+
+  final String dateText;
+  final VoidCallback onDateTap;
+  final VoidCallback onResetTap;
+  final bool showReset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.primary,
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(
+                CupertinoIcons.back,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onDateTap,
+                  child: Container(
+                    height: 44,
+                    color: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          dateText,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: const BoxDecoration(
+                            color: AppColors.textPrimary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.chevron_down,
+                            color: AppColors.primary,
+                            size: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (showReset)
+              TextButton(
+                onPressed: onResetTap,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textPrimary,
+                  textStyle: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                child: const Text('Today'),
+              )
+            else
+              const SizedBox.shrink(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmployeeIncomeRow {
+  const _EmployeeIncomeRow({
+    required this.employee,
+    required this.todayEarning,
+  });
+
+  final EmployeeItem employee;
+  final double todayEarning;
+}
+
+class _EmployeeAvatar extends StatelessWidget {
+  const _EmployeeAvatar({required this.employeeId});
+
+  final String employeeId;
+
+  @override
+  Widget build(BuildContext context) {
+    final useAsset = employeeId.hashCode.isEven;
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(21),
+        color: Colors.grey.shade200,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: useAsset
+          ? Image.asset(
+              'assets/placeholder.png',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const Icon(CupertinoIcons.person_fill, size: 20),
+            )
+          : const Icon(CupertinoIcons.person_fill, size: 20),
+    );
+  }
+}

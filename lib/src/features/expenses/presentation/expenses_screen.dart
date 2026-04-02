@@ -107,10 +107,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Widget _buildHeaderWithTodayCard(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
     const overlapHeight = 86.0;
+    const totalToTodayGap = 20.0;
     final yellowHeight = topInset + 220;
 
     return SizedBox(
-      height: yellowHeight + overlapHeight,
+      height: yellowHeight + overlapHeight + totalToTodayGap,
       child: Stack(
         children: [
           Positioned(
@@ -163,7 +164,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           Positioned(
             left: 12,
             right: 12,
-            top: yellowHeight - overlapHeight,
+            top: yellowHeight - overlapHeight + totalToTodayGap,
             child: _buildTodayCard(context),
           ),
         ],

@@ -65,6 +65,7 @@ class _BillingScreenState extends State<BillingScreen> {
   @override
   void initState() {
     super.initState();
+    LocalTaxRateStore.taxRateListenable.addListener(_onTaxRateChanged);
     final activeEmployees = LocalEmployeesStore.employees
         .where((e) => e.isActive)
         .map((e) => e.fullName)
@@ -80,9 +81,15 @@ class _BillingScreenState extends State<BillingScreen> {
 
   @override
   void dispose() {
+    LocalTaxRateStore.taxRateListenable.removeListener(_onTaxRateChanged);
     _scrollCtrl.dispose();
     _phoneCtrl.dispose();
     super.dispose();
+  }
+
+  void _onTaxRateChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
@@ -108,10 +115,8 @@ class _BillingScreenState extends State<BillingScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(CupertinoIcons.back, color: Colors.black),
-        ),
+        automaticallyImplyLeading: false,
+        centerTitle: true,
         title: const Text(
           'Billing',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
@@ -214,7 +219,9 @@ class _BillingScreenState extends State<BillingScreen> {
                         onSubmitted: (value) {
                           if (value.trim().isEmpty) return;
                           if (_hasKnownPhone(value)) return;
-                          _showMessage('Phone number does not exist. Tap Add New.');
+                          _showMessage(
+                            'Phone number does not exist. Tap Add New.',
+                          );
                         },
                         decoration: _smallDecoration(
                           'Enter Customer Phone Number',
@@ -717,4 +724,3 @@ class _PhoneMatch {
 
   final String phone;
 }
-

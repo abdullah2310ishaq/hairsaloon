@@ -31,6 +31,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   @override
   void initState() {
     super.initState();
+    LocalTaxRateStore.taxRateListenable.addListener(_onTaxRateChanged);
     final activeEmployees = LocalEmployeesStore.employees
         .where((e) => e.isActive)
         .map((e) => e.fullName)
@@ -48,10 +49,16 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
 
   @override
   void dispose() {
+    LocalTaxRateStore.taxRateListenable.removeListener(_onTaxRateChanged);
     for (final c in _amountControllers.values) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  void _onTaxRateChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   List<BillLine> get _selectedLines {
