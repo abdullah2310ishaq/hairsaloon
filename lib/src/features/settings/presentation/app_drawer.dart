@@ -332,7 +332,9 @@ class _AppDrawerState extends State<AppDrawer> {
 
   // ─── Logout ───────────────────────────────────────────────────────────────
   Future<void> _handleLogout(BuildContext context) async {
-    Navigator.pop(context);
+    final navigator = Navigator.of(context);
+    final profileNotifier = context.read<BusinessProfileNotifier>();
+    navigator.pop();
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -372,13 +374,12 @@ class _AppDrawerState extends State<AppDrawer> {
       ),
     );
 
-    if (shouldLogout == true) {
-      await context.read<BusinessProfileNotifier>().clear();
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.businessRegistration,
-        (route) => false,
-      );
-    }
+    if (shouldLogout != true || !mounted) return;
+
+    await profileNotifier.clear();
+    if (!mounted) return;
+
+    navigator.pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
   }
 }
 

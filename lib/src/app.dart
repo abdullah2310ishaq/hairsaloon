@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hairsaloon/src/core/storage/hive_bootstrap.dart';
 import 'package:hairsaloon/src/features/appointments/presentation/appointments_screen.dart';
@@ -53,6 +54,9 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setPreferredOrientations(
+      const [DeviceOrientation.portraitUp],
+    );
     _bootstrapFuture = _bootstrap();
   }
 
@@ -303,8 +307,8 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Text(
           'Barber Management',
           style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
             color: Colors.black,
           ),
         ),
