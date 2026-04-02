@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/services/data/local_category_store.dart';
+import 'package:hairsaloon/src/features/services/presentation/subcategories_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class CategoriesScreen extends StatelessWidget {
@@ -33,29 +34,44 @@ class CategoriesScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
         itemBuilder: (context, index) {
           final category = categories[index];
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
+          return Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
               borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    category,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black,
-                    ),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        SubcategoriesScreen(initialCategory: category),
                   ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 16,
                 ),
-                const Icon(
-                  CupertinoIcons.ellipsis_vertical,
-                  color: Colors.black,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        category,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      CupertinoIcons.chevron_right,
+                      color: Colors.black54,
+                      size: 16,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           );
         },

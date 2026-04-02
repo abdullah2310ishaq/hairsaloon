@@ -4,9 +4,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_scope.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
+
+  static final Uri _intelligementUri = Uri.parse(
+    'http://www.intelligement.com/',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -102,44 +107,87 @@ class DashboardScreen extends StatelessWidget {
 
         // ── Grid ──────────────────────────────────────────────────────────
         Padding(
-          padding: EdgeInsets.fromLTRB(18.w, 28.h, 18.w, 28.h),
-          child: GridView.count(
-            crossAxisCount: 2,
-            crossAxisSpacing: 14.w,
-            mainAxisSpacing: 14.h,
-            childAspectRatio: 0.88,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(18.w, 28.h, 18.w, 14.h),
+          child: Column(
             children: [
-              _DashboardTile(
-                label: 'Finance',
-                assetPath: 'assets/finance.png',
-                onTap: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.financeOverview),
+              GridView.count(
+                crossAxisCount: 2,
+                crossAxisSpacing: 14.w,
+                mainAxisSpacing: 14.h,
+                childAspectRatio: 0.88,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _DashboardTile(
+                    label: 'Finance',
+                    assetPath: 'assets/finance.png',
+                    onTap: () => Navigator.of(
+                      context,
+                    ).pushNamed(AppRoutes.financeOverview),
+                  ),
+                  _DashboardTile(
+                    label: 'Employees',
+                    assetPath: 'assets/employees.png',
+                    onTap: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.employees),
+                  ),
+                  _DashboardTile(
+                    label: 'Rate List',
+                    assetPath: 'assets/ratelust.png',
+                    onTap: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.serviceList),
+                  ),
+                  _DashboardTile(
+                    label: 'Customers',
+                    assetPath: 'assets/customers.png',
+                    onTap: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.customers),
+                  ),
+                ],
               ),
-              _DashboardTile(
-                label: 'Employees',
-                assetPath: 'assets/employees.png',
-                onTap: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.employees),
+
+              Transform.translate(
+                offset: Offset(0, -10.h),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      'Made with ❤️ by ',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => _openIntelligementWebsite(),
+                      borderRadius: BorderRadius.circular(4.r),
+                      child: Text(
+                        'Intelligement',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 11.5.sp,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.1,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              _DashboardTile(
-                label: 'Rate List',
-                assetPath: 'assets/ratelust.png',
-                onTap: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.serviceList),
-              ),
-              _DashboardTile(
-                label: 'Customers',
-                assetPath: 'assets/customers.png',
-                onTap: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.customers),
-              ),
+              SizedBox(height: 2.h),
             ],
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _openIntelligementWebsite() async {
+    await launchUrl(_intelligementUri, mode: LaunchMode.externalApplication);
   }
 }
 

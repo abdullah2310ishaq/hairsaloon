@@ -4,7 +4,9 @@ import 'package:hairsaloon/src/features/services/data/local_category_store.dart'
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class SubcategoriesScreen extends StatefulWidget {
-  const SubcategoriesScreen({super.key});
+  const SubcategoriesScreen({super.key, this.initialCategory});
+
+  final String? initialCategory;
 
   @override
   State<SubcategoriesScreen> createState() => _SubcategoriesScreenState();
@@ -17,7 +19,13 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedCategory = LocalCategoryStore.categories.first;
+    final categories = LocalCategoryStore.categories;
+    final requested = widget.initialCategory;
+    if (requested != null && categories.contains(requested)) {
+      _selectedCategory = requested;
+    } else {
+      _selectedCategory = categories.first;
+    }
   }
 
   @override

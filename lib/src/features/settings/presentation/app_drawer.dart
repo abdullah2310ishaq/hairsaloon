@@ -3,17 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_scope.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/features/settings/data/local_tax_rate_store.dart';
-import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ─── Design tokens (mirrors registration screen) ──────────────────────────────
 class _C {
-  static const bg = Color(0xFF0D0D0D);
-  static const surface = Color(0xFF1A1A1A);
-  static const surfaceHigh = Color(0xFF222222);
-  static const border = Color(0xFF2C2C2C);
+  static const bg = Color(0xFFFFFFFF);
+  static const surface = Color(0xFFF6F6F6);
+  static const surfaceHigh = Color(0xFFECECEC);
+  static const border = Color(0xFFE3E3E3);
   static const lime = Color(0xFFD4FF33);
-  static const textPrimary = Color(0xFFF0F0F0);
-  static const textSecondary = Color(0xFF7A7A7A);
+  static const textPrimary = Color(0xFF0D0D0D);
+  static const textSecondary = Color(0xFF6B6B6B);
   static const error = Color(0xFFFF5C5C);
 }
 
@@ -25,6 +25,10 @@ class AppDrawer extends StatefulWidget {
 }
 
 class _AppDrawerState extends State<AppDrawer> {
+  static final Uri _intelligementUri = Uri.parse(
+    'http://www.intelligement.com/',
+  );
+
   @override
   Widget build(BuildContext context) {
     final profile = BusinessProfileScope.of(context).profile;
@@ -82,18 +86,10 @@ class _AppDrawerState extends State<AppDrawer> {
                   _SectionLabel('CATALOGUE'),
                   _Item(
                     icon: CupertinoIcons.list_bullet_indent,
-                    title: 'Category',
+                    title: 'Categories',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.categories);
-                    },
-                  ),
-                  _Item(
-                    icon: CupertinoIcons.scissors,
-                    title: 'Subcategories',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.subcategories);
                     },
                   ),
                   const SizedBox(height: 16),
@@ -295,12 +291,36 @@ class _AppDrawerState extends State<AppDrawer> {
             ),
           ),
           const SizedBox(height: 10),
-          Text(
-            'v1.0.0  •  HairSaloon',
-            style: TextStyle(
-              color: _C.textSecondary.withOpacity(0.5),
-              fontSize: 11,
-              letterSpacing: 0.3,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const Text(
+                  'Made with ❤️ by ',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+                InkWell(
+                  onTap: _openIntelligementWebsite,
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Text(
+                    'Intelligement',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.1,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -383,6 +403,10 @@ class _AppDrawerState extends State<AppDrawer> {
         ],
       ),
     );
+  }
+
+  Future<void> _openIntelligementWebsite() async {
+    await launchUrl(_intelligementUri, mode: LaunchMode.externalApplication);
   }
 
   // ─── Logout ───────────────────────────────────────────────────────────────
