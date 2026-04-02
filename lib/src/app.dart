@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hairsaloon/src/features/appointments/presentation/appointments_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/business_registration_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/login_screen.dart';
@@ -21,7 +22,9 @@ import 'package:hairsaloon/src/features/finance/presentation/finance_overview_sc
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/features/settings/presentation/profile_settings_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/new_service_screen.dart';
+import 'package:hairsaloon/src/features/services/presentation/categories_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/service_list_screen.dart';
+import 'package:hairsaloon/src/features/services/presentation/subcategories_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -43,65 +46,79 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<_AppBootstrap>(
-      future: _bootstrapFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _loadingApp();
-        }
+    return ScreenUtilInit(
+      designSize: const Size(375, 812),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, _) {
+        return FutureBuilder<_AppBootstrap>(
+          future: _bootstrapFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return _loadingApp();
+            }
 
-        if (snapshot.hasError) {
-          return _errorApp(snapshot.error);
-        }
+            if (snapshot.hasError) {
+              return _errorApp(snapshot.error);
+            }
 
-        final bootstrap = snapshot.data;
-        if (bootstrap == null) {
-          return _loadingApp(message: 'Loading local storage...');
-        }
+            final bootstrap = snapshot.data;
+            if (bootstrap == null) {
+              return _loadingApp(message: 'Loading local storage...');
+            }
 
-        return BusinessProfileScope(
-          notifier: bootstrap.notifier,
-          child: MaterialApp(
-            title: 'Business COMB',
-            debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
-              useMaterial3: true,
-            ),
-            initialRoute: bootstrap.hasSession
-                ? AppRoutes.homeShell
-                : AppRoutes.businessRegistration,
-            routes: {
-              AppRoutes.splash: (_) => const SplashScreen(),
-              AppRoutes.login: (_) => const LoginScreen(),
-              AppRoutes.businessRegistration: (_) =>
-                  const BusinessRegistrationScreen(),
-              AppRoutes.homeShell: (_) => const DashboardShell(),
-              AppRoutes.appointments: (_) => const AppointmentsScreen(),
-              AppRoutes.employees: (_) => const EmployeesScreen(),
-              AppRoutes.employeeAgreement: (_) =>
-                  const EmployeeAgreementScreen(),
-              AppRoutes.serviceList: (_) => const ServiceListScreen(),
-              AppRoutes.newService: (_) => const NewServiceScreen(),
-              AppRoutes.financeOverview: (_) => const FinanceOverviewScreen(),
-              AppRoutes.employeeEarnings: (_) => const EmployeeEarningsScreen(),
-              AppRoutes.expenseTypes: (_) => const ExpenseTypesScreen(),
-              AppRoutes.expenses: (_) => const ExpensesScreen(),
-              AppRoutes.customers: (_) => const CustomersScreen(),
-              AppRoutes.profileSettings: (_) => const ProfileSettingsScreen(),
-              AppRoutes.savedBills: (_) => const SavedBillsScreen(),
-            },
-            onGenerateRoute: (settings) {
-              if (settings.name == AppRoutes.billDetails) {
-                final billId = settings.arguments as String?;
-                if (billId == null) return null;
-                return MaterialPageRoute(
-                  builder: (_) => BillDetailsScreen(billId: billId),
-                );
-              }
-              return null;
-            },
-          ),
+            return BusinessProfileScope(
+              notifier: bootstrap.notifier,
+              child: MaterialApp(
+                title: 'Business COMB',
+                debugShowCheckedModeBanner: false,
+                theme: ThemeData(
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor: AppColors.primary,
+                  ),
+                  useMaterial3: true,
+                ),
+                initialRoute: bootstrap.hasSession
+                    ? AppRoutes.homeShell
+                    : AppRoutes.businessRegistration,
+                routes: {
+                  AppRoutes.splash: (_) => const SplashScreen(),
+                  AppRoutes.login: (_) => const LoginScreen(),
+                  AppRoutes.businessRegistration: (_) =>
+                      const BusinessRegistrationScreen(),
+                  AppRoutes.homeShell: (_) => const DashboardShell(),
+                  AppRoutes.appointments: (_) => const AppointmentsScreen(),
+                  AppRoutes.employees: (_) => const EmployeesScreen(),
+                  AppRoutes.employeeAgreement: (_) =>
+                      const EmployeeAgreementScreen(),
+                  AppRoutes.serviceList: (_) => const ServiceListScreen(),
+                  AppRoutes.newService: (_) => const NewServiceScreen(),
+                  AppRoutes.categories: (_) => const CategoriesScreen(),
+                  AppRoutes.subcategories: (_) => const SubcategoriesScreen(),
+                  AppRoutes.financeOverview: (_) =>
+                      const FinanceOverviewScreen(),
+                  AppRoutes.employeeEarnings: (_) =>
+                      const EmployeeEarningsScreen(),
+                  AppRoutes.expenseTypes: (_) => const ExpenseTypesScreen(),
+                  AppRoutes.expenses: (_) => const ExpensesScreen(),
+                  AppRoutes.customers: (_) => const CustomersScreen(),
+                  AppRoutes.profileSettings: (_) =>
+                      const ProfileSettingsScreen(),
+                  AppRoutes.savedBills: (_) => const SavedBillsScreen(),
+                },
+                onGenerateRoute: (settings) {
+                  if (settings.name == AppRoutes.billDetails) {
+                    final billId = settings.arguments as String?;
+                    if (billId == null) return null;
+                    return MaterialPageRoute(
+                      builder: (_) => BillDetailsScreen(billId: billId),
+                    );
+                  }
+                  return null;
+                },
+              ),
+            );
+          },
         );
       },
     );
@@ -188,10 +205,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
 }
 
 class _AppBootstrap {
-  const _AppBootstrap({
-    required this.notifier,
-    required this.hasSession,
-  });
+  const _AppBootstrap({required this.notifier, required this.hasSession});
 
   final BusinessProfileNotifier notifier;
   final bool hasSession;

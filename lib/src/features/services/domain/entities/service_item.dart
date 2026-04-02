@@ -2,7 +2,7 @@ class ServiceItem {
   const ServiceItem({
     required this.id,
     required this.category,
-    required this.serviceName,
+    required this.subcategory,
     required this.gender,
     required this.ageGroup,
     required this.price,
@@ -10,7 +10,7 @@ class ServiceItem {
 
   final String id;
   final String category;
-  final String serviceName;
+  final String subcategory;
   final String gender;
   final String ageGroup;
   final double price;
@@ -18,7 +18,7 @@ class ServiceItem {
   ServiceItem copyWith({
     String? id,
     String? category,
-    String? serviceName,
+    String? subcategory,
     String? gender,
     String? ageGroup,
     double? price,
@@ -26,11 +26,10 @@ class ServiceItem {
     return ServiceItem(
       id: id ?? this.id,
       category: category ?? this.category,
-      serviceName: serviceName ?? this.serviceName,
+      subcategory: subcategory ?? this.subcategory,
       gender: gender ?? this.gender,
       ageGroup: ageGroup ?? this.ageGroup,
       price: price ?? this.price,
     );
   }
 }
-

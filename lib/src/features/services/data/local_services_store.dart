@@ -1,4 +1,5 @@
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
+import 'package:hairsaloon/src/features/services/data/local_category_store.dart';
 
 class LocalServicesStore {
   LocalServicesStore._();
@@ -6,8 +7,8 @@ class LocalServicesStore {
   static final List<ServiceItem> _services = [
     ServiceItem(
       id: '1',
-      category: "Men's Grooming",
-      serviceName: 'Hair Cut',
+      category: 'Hair Care & Styling',
+      subcategory: 'Simple Cutting',
       gender: 'Male',
       ageGroup: 'Adult',
       price: 400,
@@ -15,7 +16,7 @@ class LocalServicesStore {
     ServiceItem(
       id: '2',
       category: "Men's Grooming",
-      serviceName: 'Beard Trim',
+      subcategory: 'Beard Trim',
       gender: 'Male',
       ageGroup: 'Adult',
       price: 350,
@@ -23,7 +24,7 @@ class LocalServicesStore {
     ServiceItem(
       id: '3',
       category: "Men's Grooming",
-      serviceName: 'Shave',
+      subcategory: 'Shave',
       gender: 'Male',
       ageGroup: 'Adult',
       price: 300,
@@ -31,7 +32,7 @@ class LocalServicesStore {
     ServiceItem(
       id: '4',
       category: 'Skincare & Facials',
-      serviceName: 'Facial Basic',
+      subcategory: 'Basic Facial',
       gender: 'Female',
       ageGroup: 'Adult',
       price: 1500,
@@ -39,23 +40,23 @@ class LocalServicesStore {
     ServiceItem(
       id: '5',
       category: 'Skincare & Facials',
-      serviceName: 'Whitening Facial',
+      subcategory: 'Cleanup',
       gender: 'Female',
       ageGroup: 'Adult',
       price: 2200,
     ),
     ServiceItem(
       id: '6',
-      category: 'Hair',
-      serviceName: 'Hair Color',
+      category: 'Hair Treatments',
+      subcategory: 'Keratin',
       gender: 'Female',
       ageGroup: 'Adult',
       price: 2500,
     ),
     ServiceItem(
       id: '7',
-      category: 'Hair',
-      serviceName: 'Hair Spa',
+      category: 'Hair Treatments',
+      subcategory: 'Hair Spa',
       gender: 'Female',
       ageGroup: 'Adult',
       price: 1800,
@@ -63,7 +64,7 @@ class LocalServicesStore {
     ServiceItem(
       id: '8',
       category: 'Packages',
-      serviceName: 'Groom Package',
+      subcategory: 'Groom Package',
       gender: 'Male',
       ageGroup: 'Adult',
       price: 2800,
@@ -71,31 +72,31 @@ class LocalServicesStore {
     ServiceItem(
       id: '9',
       category: 'Packages',
-      serviceName: 'Bridal Package',
+      subcategory: 'Bridal Package',
       gender: 'Female',
       ageGroup: 'Adult',
       price: 8500,
     ),
     ServiceItem(
       id: '10',
-      category: 'Child',
-      serviceName: 'Kids Hair Cut',
+      category: 'Kids Services',
+      subcategory: 'Kids Hair Cut',
       gender: 'Male',
       ageGroup: 'Child',
       price: 500,
     ),
     ServiceItem(
       id: '11',
-      category: 'Women',
-      serviceName: 'Threading',
+      category: 'Hair Removal',
+      subcategory: 'Threading',
       gender: 'Female',
       ageGroup: 'Adult',
       price: 300,
     ),
     ServiceItem(
       id: '12',
-      category: 'Women',
-      serviceName: 'Waxing Arms',
+      category: 'Hair Removal',
+      subcategory: 'Waxing Arms',
       gender: 'Female',
       ageGroup: 'Adult',
       price: 1200,
@@ -103,27 +104,25 @@ class LocalServicesStore {
     ServiceItem(
       id: '13',
       category: 'Skincare & Facials',
-      serviceName: 'Cleanup',
+      subcategory: 'Cleanup',
       gender: 'Female',
       ageGroup: 'Adult',
       price: 900,
     ),
     ServiceItem(
       id: '14',
-      category: 'Hair',
-      serviceName: 'Blow Dry',
+      category: 'Hair Care & Styling',
+      subcategory: 'Trims',
       gender: 'Female',
       ageGroup: 'Adult',
       price: 700,
     ),
   ];
 
-  static List<ServiceItem> get services => List<ServiceItem>.unmodifiable(_services);
+  static List<ServiceItem> get services =>
+      List<ServiceItem>.unmodifiable(_services);
 
-  static List<String> get categories {
-    final unique = _services.map((e) => e.category).toSet().toList()..sort();
-    return unique;
-  }
+  static List<String> get categories => LocalCategoryStore.categories;
 
   static void addService(ServiceItem service) {
     _services.insert(0, service);
@@ -139,4 +138,3 @@ class LocalServicesStore {
     _services.removeWhere((e) => e.id == id);
   }
 }
-

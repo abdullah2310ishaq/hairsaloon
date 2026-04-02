@@ -36,7 +36,9 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
         .map((e) => e.fullName)
         .where((name) => name.isNotEmpty)
         .toList();
-    _employee = activeEmployees.isNotEmpty ? activeEmployees.first : 'Unassigned';
+    _employee = activeEmployees.isNotEmpty
+        ? activeEmployees.first
+        : 'Unassigned';
     final services = LocalServicesStore.services;
     _amountControllers = {
       for (int i = 0; i < services.length; i++)
@@ -56,9 +58,10 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     final services = LocalServicesStore.services;
     return _selectedServiceIndexes.map((i) {
       final svc = services[i];
-      final amount = double.tryParse(_amountControllers[i]?.text ?? '') ?? svc.price;
+      final amount =
+          double.tryParse(_amountControllers[i]?.text ?? '') ?? svc.price;
       return BillLine(
-        serviceName: svc.serviceName,
+        serviceName: svc.subcategory,
         price: amount,
         qty: 1,
         tag: svc.category,
@@ -66,7 +69,8 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     }).toList();
   }
 
-  double get _subTotal => _selectedLines.fold(0, (sum, line) => sum + line.total);
+  double get _subTotal =>
+      _selectedLines.fold(0, (sum, line) => sum + line.total);
   double get _taxPercent => LocalTaxRateStore.taxRate;
   double get _taxAmount => (_subTotal * _taxPercent) / 100;
   double get _grandTotal => _subTotal + _taxAmount;
@@ -108,14 +112,29 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
               children: [
                 Row(
                   children: [
-                    Text('Sub Total: ${_subTotal.toStringAsFixed(0)}',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    Text(
+                      'Sub Total: ${_subTotal.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Text('Tax: ${_taxPercent.toStringAsFixed(0)}%',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    Text(
+                      'Tax: ${_taxPercent.toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const Spacer(),
-                    Text('Total: Rs.${_grandTotal.toStringAsFixed(0)}',
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                    Text(
+                      'Total: Rs.${_grandTotal.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -151,7 +170,8 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                   items: const ['Cash']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
-                  onChanged: (v) => setState(() => _paymentType = v ?? _paymentType),
+                  onChanged: (v) =>
+                      setState(() => _paymentType = v ?? _paymentType),
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
@@ -162,7 +182,10 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                       foregroundColor: Colors.white,
                     ),
                     onPressed: _saveBill,
-                    child: const Text('Save Bill', style: TextStyle(fontSize: 12)),
+                    child: const Text(
+                      'Save Bill',
+                      style: TextStyle(fontSize: 12),
+                    ),
                   ),
                 ),
               ],
@@ -201,12 +224,18 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              s.serviceName,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              s.subcategory,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             Text(
                               s.category,
-                              style: const TextStyle(fontSize: 10, color: Colors.blueGrey),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.blueGrey,
+                              ),
                             ),
                           ],
                         ),
@@ -221,7 +250,10 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                           decoration: InputDecoration(
                             prefixText: 'Rs.',
                             isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 10,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -273,10 +305,9 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       grandTotal: _grandTotal,
     );
     LocalBillingStore.addBill(bill);
-    Navigator.of(context).pushReplacementNamed(
-      AppRoutes.billDetails,
-      arguments: bill.id,
-    );
+    Navigator.of(
+      context,
+    ).pushReplacementNamed(AppRoutes.billDetails, arguments: bill.id);
   }
 
   void _showMessage(String message) {
@@ -294,4 +325,3 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     );
   }
 }
-

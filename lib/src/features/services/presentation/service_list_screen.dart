@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/features/services/data/local_category_store.dart';
 import 'package:hairsaloon/src/features/services/data/local_services_store.dart';
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
 import 'package:hairsaloon/src/features/services/presentation/service_details_screen.dart';
@@ -17,14 +18,16 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   bool _showAddForm = false;
   String _selectedCategoryTab = 'All';
 
-  String? _newCategoryDropdown;
-  String _newCategoryCustom = '';
-  String _newServiceName = '';
+  String? _newCategory;
+  String? _newSubcategory;
   String? _newGender;
   String? _newAgeGroup;
   String _newPrice = '';
   List<ServiceItem> get _services => LocalServicesStore.services;
-  List<String> get _categories => ['All', ...LocalServicesStore.categories];
+  List<String> get _categories => ['All', ...LocalCategoryStore.categories];
+  List<String> get _newSubcategories => _newCategory == null
+      ? const <String>[]
+      : LocalCategoryStore.subcategoriesFor(_newCategory!);
 
   List<ServiceItem> get _filteredServices {
     if (_selectedCategoryTab == 'All') return List<ServiceItem>.from(_services);
@@ -127,7 +130,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                           return AlertDialog(
                             title: const Text('Delete Service'),
                             content: Text(
-                              'Are you sure you want to delete "${item.serviceName}"?',
+                              'Are you sure you want to delete "${item.subcategory}"?',
                             ),
                             actions: [
                               TextButton(
@@ -184,7 +187,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                 fontWeight: FontWeight.w400,
                 color: Colors.black,
               ),
-              value: _newCategoryDropdown,
+              value: _newCategory,
               decoration: _fieldDecoration('Select Category'),
               items: _categories
                   .where((e) => e != 'All')
@@ -201,25 +204,62 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                     ),
                   )
                   .toList(),
-              onChanged: (value) =>
-                  setState(() => _newCategoryDropdown = value),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              decoration: _fieldDecoration('Or Enter New Category'),
-              onChanged: (value) => _newCategoryCustom = value.trim(),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              decoration: _fieldDecoration('Select Service'),
-              onChanged: (value) => _newServiceName = value.trim(),
+              onChanged: (value) {
+                setState(() {
+                  _newCategory = value;
+                  final subcategories = _newSubcategories;
+                  _newSubcategory = subcategories.isEmpty
+                      ? null
+                      : subcategories.first;
+                });
+              },
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter service.';
+                  return 'Please select category.';
                 }
                 return null;
               },
             ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: Colors.black,
+              ),
+              value: _newSubcategory,
+              decoration: _fieldDecoration('Select Subcategory'),
+              items: _newSubcategories
+                  .map(
+                    (e) => DropdownMenuItem(
+                      value: e,
+                      child: Text(
+                        e,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: _newSubcategories.isEmpty
+                  ? null
+                  : (value) => setState(() => _newSubcategory = value),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please select subcategory.';
+                }
+                return null;
+              },
+            ),
+            if (_newCategory != null && _newSubcategories.isEmpty) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'No subcategory found. Please add from Subcategories screen.',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               style: const TextStyle(
@@ -333,28 +373,28 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   void _saveService() {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
-    if (_newGender == null || _newAgeGroup == null) return;
-
-    final category = _newCategoryCustom.isNotEmpty
-        ? _newCategoryCustom
-        : (_newCategoryDropdown ?? _selectedCategoryTab);
+    if (_newCategory == null ||
+        _newSubcategory == null ||
+        _newGender == null ||
+        _newAgeGroup == null) {
+      return;
+    }
 
     setState(() {
       LocalServicesStore.addService(
         ServiceItem(
           id: DateTime.now().microsecondsSinceEpoch.toString(),
-          category: category,
-          serviceName: _newServiceName,
+          category: _newCategory!,
+          subcategory: _newSubcategory!,
           gender: _newGender!,
           ageGroup: _newAgeGroup!,
           price: double.parse(_newPrice),
         ),
       );
-      _selectedCategoryTab = category;
+      _selectedCategoryTab = _newCategory!;
       _showAddForm = false;
-      _newCategoryDropdown = null;
-      _newCategoryCustom = '';
-      _newServiceName = '';
+      _newCategory = null;
+      _newSubcategory = null;
       _newGender = null;
       _newAgeGroup = null;
       _newPrice = '';
@@ -364,10 +404,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
 
   Future<void> _openDetails(ServiceItem item) async {
     final updated = await Navigator.of(context).push<ServiceItem>(
-      MaterialPageRoute(
-        builder: (_) =>
-            ServiceDetailsScreen(item: item, categories: _categories),
-      ),
+      MaterialPageRoute(builder: (_) => ServiceDetailsScreen(item: item)),
     );
     if (updated == null) return;
 
@@ -418,7 +455,7 @@ class _ServiceTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        item.serviceName,
+                        item.subcategory,
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,

@@ -142,7 +142,7 @@ class _BillingScreenState extends State<BillingScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          s.serviceName,
+                          s.subcategory,
                           style: const TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w500,

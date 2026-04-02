@@ -17,6 +17,8 @@ class AppRoutes {
 
   static const serviceList = '/services';
   static const newService = '/services/new';
+  static const categories = '/categories';
+  static const subcategories = '/subcategories';
 
   static const financeOverview = '/finance';
   static const employeeEarnings = '/finance/employee-earnings';

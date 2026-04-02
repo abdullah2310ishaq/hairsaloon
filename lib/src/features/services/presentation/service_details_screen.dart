@@ -1,26 +1,22 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/features/services/data/local_category_store.dart';
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
-  const ServiceDetailsScreen({
-    super.key,
-    required this.item,
-    required this.categories,
-  });
+  const ServiceDetailsScreen({super.key, required this.item});
 
   final ServiceItem item;
-  final List<String> categories;
 
   @override
   State<ServiceDetailsScreen> createState() => _ServiceDetailsScreenState();
 }
 
 class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
-  late final TextEditingController _serviceController;
   late final TextEditingController _priceController;
-  late final TextEditingController _categoryController;
+  late String _category;
+  late String _subcategory;
   late String _gender;
   late String _ageGroup;
   bool _isEditing = false;
@@ -28,28 +24,30 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _serviceController = TextEditingController(text: widget.item.serviceName);
     _priceController = TextEditingController(
       text: widget.item.price.toStringAsFixed(0),
     );
-    _categoryController = TextEditingController(text: widget.item.category);
+    _category = widget.item.category;
+    _subcategory = widget.item.subcategory;
     _gender = widget.item.gender;
     _ageGroup = widget.item.ageGroup;
   }
 
   @override
   void dispose() {
-    _serviceController.dispose();
     _priceController.dispose();
-    _categoryController.dispose();
     super.dispose();
   }
+
+  List<String> get _categories => LocalCategoryStore.categories;
+  List<String> get _subcategories =>
+      LocalCategoryStore.subcategoriesFor(_category);
 
   @override
   Widget build(BuildContext context) {
     final currentItem = widget.item.copyWith(
-      category: _categoryController.text,
-      serviceName: _serviceController.text,
+      category: _category,
+      subcategory: _subcategory,
       gender: _gender,
       ageGroup: _ageGroup,
       price: double.tryParse(_priceController.text) ?? widget.item.price,
@@ -109,7 +107,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          currentItem.serviceName,
+                          currentItem.subcategory,
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
@@ -138,17 +136,47 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               ),
               child: Column(
                 children: [
-                  _inputField(
-                    controller: _categoryController,
-                    hint: 'Category',
-                    enabled: _isEditing,
+                  DropdownButtonFormField<String>(
+                    value: _category,
+                    decoration: _decoration('Category'),
+                    items: _categories
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: _isEditing
+                        ? (value) {
+                            if (value == null) return;
+                            setState(() {
+                              _category = value;
+                              final subs = _subcategories;
+                              _subcategory = subs.isEmpty ? '' : subs.first;
+                            });
+                          }
+                        : null,
                   ),
                   const SizedBox(height: 10),
-                  _inputField(
-                    controller: _serviceController,
-                    hint: 'Service Name',
-                    enabled: _isEditing,
+                  DropdownButtonFormField<String>(
+                    value: _subcategory.isEmpty ? null : _subcategory,
+                    decoration: _decoration('Subcategory'),
+                    items: _subcategories
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: _isEditing
+                        ? (value) {
+                            if (value == null) return;
+                            setState(() => _subcategory = value);
+                          }
+                        : null,
                   ),
+                  if (_subcategories.isEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'No subcategory found for this category.',
+                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
                     value: _gender,
@@ -217,9 +245,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     return InputDecoration(
       hintText: hint,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: Colors.grey.shade300),
@@ -242,15 +268,17 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   }
 
   void _saveChanges() {
-    final serviceName = _serviceController.text.trim();
-    final category = _categoryController.text.trim();
     final parsedPrice = double.tryParse(_priceController.text.trim());
-    if (serviceName.isEmpty || category.isEmpty || parsedPrice == null) return;
+    if (_category.trim().isEmpty ||
+        _subcategory.trim().isEmpty ||
+        parsedPrice == null) {
+      return;
+    }
 
     Navigator.of(context).pop(
       widget.item.copyWith(
-        category: category,
-        serviceName: serviceName,
+        category: _category,
+        subcategory: _subcategory,
         gender: _gender,
         ageGroup: _ageGroup,
         price: parsedPrice,
@@ -258,4 +286,3 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 }
-

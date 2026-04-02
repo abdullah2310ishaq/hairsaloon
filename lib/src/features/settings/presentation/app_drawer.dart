@@ -96,7 +96,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     icon: CupertinoIcons.person_crop_circle,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.profileSettings);
+                      Navigator.of(
+                        context,
+                      ).pushNamed(AppRoutes.profileSettings);
                     },
                   ),
                   Divider(
@@ -105,11 +107,11 @@ class _AppDrawerState extends State<AppDrawer> {
                     color: theme.dividerColor.withValues(alpha: 0.35),
                   ),
                   _DrawerItem(
-                    title: 'Category List',
+                    title: 'Category',
                     icon: CupertinoIcons.list_bullet_indent,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.serviceList);
+                      Navigator.of(context).pushNamed(AppRoutes.categories);
                     },
                   ),
                   Divider(
@@ -141,11 +143,11 @@ class _AppDrawerState extends State<AppDrawer> {
                     color: theme.dividerColor.withValues(alpha: 0.35),
                   ),
                   _DrawerItem(
-                    title: 'Service List',
+                    title: 'Subcategories',
                     icon: CupertinoIcons.scissors,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.serviceList);
+                      Navigator.of(context).pushNamed(AppRoutes.subcategories);
                     },
                   ),
 
@@ -211,9 +213,7 @@ class _AppDrawerState extends State<AppDrawer> {
         content: TextField(
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            hintText: 'Enter tax percentage',
-          ),
+          decoration: const InputDecoration(hintText: 'Enter tax percentage'),
         ),
         actions: [
           TextButton(
@@ -331,9 +331,7 @@ class _LogoutTile extends StatelessWidget {
 
           if (shouldLogout == true) {
             await BusinessProfileScope.of(context).clear();
-            Navigator.of(
-              context,
-            ).pushNamedAndRemoveUntil(
+            Navigator.of(context).pushNamedAndRemoveUntil(
               AppRoutes.businessRegistration,
               (route) => false,
             );
