@@ -5,6 +5,18 @@ import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/features/settings/data/local_tax_rate_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 
+// ─── Design tokens (mirrors registration screen) ──────────────────────────────
+class _C {
+  static const bg = Color(0xFF0D0D0D);
+  static const surface = Color(0xFF1A1A1A);
+  static const surfaceHigh = Color(0xFF222222);
+  static const border = Color(0xFF2C2C2C);
+  static const lime = Color(0xFFD4FF33);
+  static const textPrimary = Color(0xFFF0F0F0);
+  static const textSecondary = Color(0xFF7A7A7A);
+  static const error = Color(0xFFFF5C5C);
+}
+
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
 
@@ -15,85 +27,42 @@ class AppDrawer extends StatefulWidget {
 class _AppDrawerState extends State<AppDrawer> {
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final profile = BusinessProfileScope.of(context).profile;
+    final businessName = (profile?.businessName.trim().isNotEmpty ?? false)
+        ? profile!.businessName
+        : 'My Business';
+    final city = (profile?.city.trim().isNotEmpty ?? false)
+        ? profile!.city
+        : 'Islamabad';
 
     return Drawer(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: _C.bg,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
-          topRight: Radius.circular(24),
-          bottomRight: Radius.circular(24),
+          topRight: Radius.circular(28),
+          bottomRight: Radius.circular(28),
         ),
       ),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Logo / Brand bar ────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      CupertinoIcons.scissors,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Business COMB',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // ── Header ──────────────────────────────────────────────────
+            _buildHeader(businessName, city),
 
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-              child: Divider(
-                height: 1,
-                thickness: 1,
-                color: theme.dividerColor.withValues(alpha: 0.35),
-              ),
-            ),
+            const SizedBox(height: 8),
 
-            // ── Menu section label ───────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-              child: Text(
-                'MENU',
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-
-            // ── Menu items ───────────────────────────────────────────────
+            // ── Menu list ────────────────────────────────────────────────
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                 children: [
-                  _DrawerItem(
-                    title: 'Profile Settings',
+                  _SectionLabel('GENERAL'),
+                  _Item(
                     icon: CupertinoIcons.person_crop_circle,
+                    title: 'Profile Settings',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(
@@ -101,107 +70,245 @@ class _AppDrawerState extends State<AppDrawer> {
                       ).pushNamed(AppRoutes.profileSettings);
                     },
                   ),
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: theme.dividerColor.withValues(alpha: 0.35),
+                  _Item(
+                    icon: CupertinoIcons.person_2,
+                    title: 'Customers',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushNamed(AppRoutes.customers);
+                    },
                   ),
-                  _DrawerItem(
-                    title: 'Category',
+                  const SizedBox(height: 16),
+                  _SectionLabel('CATALOGUE'),
+                  _Item(
                     icon: CupertinoIcons.list_bullet_indent,
+                    title: 'Category',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.categories);
                     },
                   ),
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: theme.dividerColor.withValues(alpha: 0.35),
-                  ),
-                  _DrawerItem(
-                    title: 'Expense List',
-                    icon: CupertinoIcons.creditcard,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.expenses);
-                    },
-                  ),
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: theme.dividerColor.withValues(alpha: 0.35),
-                  ),
-                  _DrawerItem(
-                    title: 'Currency Change',
-                    icon: CupertinoIcons.money_dollar_circle,
-                    onTap: () => Navigator.pop(context),
-                  ),
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: theme.dividerColor.withValues(alpha: 0.35),
-                  ),
-                  _DrawerItem(
-                    title: 'Subcategories',
+                  _Item(
                     icon: CupertinoIcons.scissors,
+                    title: 'Subcategories',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.subcategories);
                     },
                   ),
-
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: theme.dividerColor.withValues(alpha: 0.35),
+                  const SizedBox(height: 16),
+                  _SectionLabel('FINANCE'),
+                  _Item(
+                    icon: CupertinoIcons.creditcard,
+                    title: 'Expense List',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushNamed(AppRoutes.expenses);
+                    },
                   ),
-                  _DrawerItem(
-                    title: 'Tax Rate',
+                  _Item(
+                    icon: CupertinoIcons.money_dollar_circle,
+                    title: 'Currency Change',
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  _Item(
                     icon: CupertinoIcons.percent,
+                    title: 'Tax Rate',
+                    trailing: _TaxBadge(),
                     onTap: () async {
                       Navigator.pop(context);
                       await _showTaxRateDialog(context);
-                    },
-                  ),
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: theme.dividerColor.withValues(alpha: 0.35),
-                  ),
-                  _DrawerItem(
-                    title: 'Customers',
-                    icon: CupertinoIcons.person_2,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.customers);
                     },
                   ),
                 ],
               ),
             ),
 
-            // ── Divider ──────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Divider(
-                height: 1,
-                thickness: 1,
-                color: theme.dividerColor.withValues(alpha: 0.35),
-              ),
-            ),
-
-            // ── Logout ───────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-              child: _LogoutTile(),
-            ),
+            // ── Bottom: version + logout ──────────────────────────────────
+            _buildFooter(context),
           ],
         ),
       ),
     );
   }
 
+  // ─── Header ───────────────────────────────────────────────────────────────
+  Widget _buildHeader(String name, String city) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _C.border, width: 1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // App icon + name row
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _C.lime,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  CupertinoIcons.scissors,
+                  color: Colors.black,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Business COMB',
+                    style: TextStyle(
+                      color: _C.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    'Salon Manager',
+                    style: TextStyle(
+                      color: _C.textSecondary,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          // Business card
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _C.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _C.border, width: 1),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: _C.lime.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.building_2_fill,
+                    color: _C.lime,
+                    size: 17,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: _C.textPrimary,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(
+                            CupertinoIcons.location_solid,
+                            size: 10,
+                            color: _C.textSecondary,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            city,
+                            style: const TextStyle(
+                              color: _C.textSecondary,
+                              fontSize: 11.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Footer ───────────────────────────────────────────────────────────────
+  Widget _buildFooter(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: _C.border, width: 1)),
+      ),
+      child: Column(
+        children: [
+          // Logout button
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: _C.error.withOpacity(0.08),
+                foregroundColor: _C.error,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: _C.error.withOpacity(0.2), width: 1),
+                ),
+              ),
+              onPressed: () => _handleLogout(context),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(CupertinoIcons.square_arrow_left, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Logout',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'v1.0.0  •  HairSaloon',
+            style: TextStyle(
+              color: _C.textSecondary.withOpacity(0.5),
+              fontSize: 11,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Tax dialog ───────────────────────────────────────────────────────────
   Future<void> _showTaxRateDialog(BuildContext context) async {
     final controller = TextEditingController(
       text: LocalTaxRateStore.taxRate.toStringAsFixed(0),
@@ -209,18 +316,56 @@ class _AppDrawerState extends State<AppDrawer> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Set Tax Rate (%)'),
+        backgroundColor: _C.surfaceHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Tax Rate',
+          style: TextStyle(color: _C.textPrimary, fontWeight: FontWeight.w600),
+        ),
         content: TextField(
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(hintText: 'Enter tax percentage'),
+          style: const TextStyle(color: _C.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'Enter percentage e.g. 16',
+            hintStyle: const TextStyle(color: _C.textSecondary),
+            suffixText: '%',
+            suffixStyle: const TextStyle(
+              color: _C.lime,
+              fontWeight: FontWeight.w600,
+            ),
+            filled: true,
+            fillColor: _C.surface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _C.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _C.lime, width: 1.5),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _C.border),
+            ),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: _C.textSecondary),
+            ),
           ),
-          FilledButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _C.lime,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
             onPressed: () {
               final value = double.tryParse(controller.text.trim());
               if (value == null || value < 0) {
@@ -230,141 +375,181 @@ class _AppDrawerState extends State<AppDrawer> {
               setState(() => LocalTaxRateStore.setTaxRate(value));
               Navigator.of(dialogContext).pop();
             },
-            child: const Text('Save'),
+            child: const Text(
+              'Save',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
     );
   }
+
+  // ─── Logout ───────────────────────────────────────────────────────────────
+  Future<void> _handleLogout(BuildContext context) async {
+    Navigator.pop(context);
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: _C.surfaceHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Logout',
+          style: TextStyle(color: _C.textPrimary, fontWeight: FontWeight.w600),
+        ),
+        content: const Text(
+          'Are you sure you want to logout?',
+          style: TextStyle(color: _C.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: _C.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _C.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text(
+              'Logout',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      await BusinessProfileScope.of(context).clear();
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.businessRegistration,
+        (route) => false,
+      );
+    }
+  }
 }
 
-// ── Drawer Item ─────────────────────────────────────────────────────────────
+// ── Section label ─────────────────────────────────────────────────────────────
 
-class _DrawerItem extends StatelessWidget {
-  const _DrawerItem({
-    required this.title,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String title;
-  final IconData icon;
-  final VoidCallback onTap;
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: Colors.black),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                  letterSpacing: -0.1,
-                ),
-              ),
-            ),
-            Icon(
-              CupertinoIcons.chevron_right,
-              size: 14,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
-            ),
-          ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: _C.textSecondary,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.3,
         ),
       ),
     );
   }
 }
 
-// ── Logout Tile ──────────────────────────────────────────────────────────────
+// ── Menu item ─────────────────────────────────────────────────────────────────
 
-class _LogoutTile extends StatelessWidget {
+class _Item extends StatelessWidget {
+  const _Item({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  final Widget? trailing;
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () async {
-          Navigator.pop(context);
-          final shouldLogout = await showDialog<bool>(
-            context: context,
-            builder: (dialogContext) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: const Text('Logout'),
-              content: const Text('Are you sure you want to logout?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Cancel'),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          splashColor: _C.lime.withOpacity(0.06),
+          highlightColor: _C.lime.withOpacity(0.04),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            child: Row(
+              children: [
+                // Icon container
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: _C.surface,
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: _C.border, width: 1),
+                  ),
+                  child: Icon(icon, size: 17, color: _C.textSecondary),
                 ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primaryContainer,
-                    foregroundColor: theme.colorScheme.onPrimaryContainer,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                const SizedBox(width: 13),
+                // Title
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: _C.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -0.1,
                     ),
                   ),
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('Logout'),
                 ),
+                // Trailing or chevron
+                trailing ??
+                    const Icon(
+                      CupertinoIcons.chevron_right,
+                      size: 13,
+                      color: _C.textSecondary,
+                    ),
               ],
             ),
-          );
-
-          if (shouldLogout == true) {
-            await BusinessProfileScope.of(context).clear();
-            Navigator.of(context).pushNamedAndRemoveUntil(
-              AppRoutes.businessRegistration,
-              (route) => false,
-            );
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-          child: Row(
-            children: [
-              const Icon(
-                CupertinoIcons.square_arrow_left,
-                size: 20,
-                color: Colors.black,
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Text(
-                  'Logout',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                    letterSpacing: -0.1,
-                  ),
-                ),
-              ),
-              const Icon(
-                CupertinoIcons.chevron_right,
-                size: 14,
-                color: Colors.black54,
-              ),
-            ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Tax badge ─────────────────────────────────────────────────────────────────
+
+class _TaxBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: _C.lime.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: _C.lime.withOpacity(0.3), width: 1),
+      ),
+      child: Text(
+        '${LocalTaxRateStore.taxRate.toStringAsFixed(0)}%',
+        style: const TextStyle(
+          color: _C.lime,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
         ),
       ),
     );

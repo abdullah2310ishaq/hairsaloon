@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_scope.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
@@ -22,90 +23,117 @@ class DashboardScreen extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
+        // ── Header ────────────────────────────────────────────────────────
         Container(
           color: AppColors.primary,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+          padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 28.h),
           child: SafeArea(
             bottom: false,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Menu icon
                 Builder(
-                  builder: (context) {
-                    return IconButton(
-                      onPressed: () => Scaffold.of(context).openDrawer(),
-                      icon: const Icon(CupertinoIcons.bars),
-                      color: Colors.black,
-                    );
-                  },
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Welcome',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                  builder: (ctx) => GestureDetector(
+                    onTap: () => Scaffold.of(ctx).openDrawer(),
+                    child: Container(
+                      width: 40.w,
+                      height: 40.w,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
+                      child: Icon(
+                        CupertinoIcons.bars,
+                        color: Colors.black,
+                        size: 20.r,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 20.h),
+                // Welcome label
+                Text(
+                  'WELCOME BACK',
+                  style: TextStyle(
+                    color: Colors.black.withOpacity(0.5),
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.4,
+                  ),
+                ),
+                SizedBox(height: 5.h),
+                // Business name
                 Text(
                   businessName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 26.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
+                    height: 1.1,
                   ),
                 ),
-                Text(
-                  address,
-                  style: TextStyle(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
+                SizedBox(height: 6.h),
+                // Address row
+                Row(
+                  children: [
+                    Icon(
+                      CupertinoIcons.location_solid,
+                      size: 12.r,
+                      color: Colors.black.withOpacity(0.45),
+                    ),
+                    SizedBox(width: 4.w),
+                    Text(
+                      address,
+                      style: TextStyle(
+                        color: Colors.black.withOpacity(0.5),
+                        fontSize: 12.5.sp,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ),
+
+        // ── Grid ──────────────────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: Column(
+          padding: EdgeInsets.fromLTRB(18.w, 28.h, 18.w, 28.h),
+          child: GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 14.w,
+            mainAxisSpacing: 14.h,
+            childAspectRatio: 0.88,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             children: [
-              GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _DashboardTile(
-                    label: 'Finance',
-                    assetPath: 'assets/finance.png',
-                    onTap: () => Navigator.of(
-                      context,
-                    ).pushNamed(AppRoutes.financeOverview),
-                  ),
-                  _DashboardTile(
-                    label: 'Employees',
-                    assetPath: 'assets/employees.png',
-                    onTap: () =>
-                        Navigator.of(context).pushNamed(AppRoutes.employees),
-                  ),
-                  _DashboardTile(
-                    label: 'Rate List',
-                    assetPath: 'assets/ratelust.png',
-                    onTap: () =>
-                        Navigator.of(context).pushNamed(AppRoutes.serviceList),
-                  ),
-                  _DashboardTile(
-                    label: 'Customers',
-                    assetPath: 'assets/customers.png',
-                    onTap: () =>
-                        Navigator.of(context).pushNamed(AppRoutes.customers),
-                  ),
-                ],
+              _DashboardTile(
+                label: 'Finance',
+                assetPath: 'assets/finance.png',
+                onTap: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.financeOverview),
+              ),
+              _DashboardTile(
+                label: 'Employees',
+                assetPath: 'assets/employees.png',
+                onTap: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.employees),
+              ),
+              _DashboardTile(
+                label: 'Rate List',
+                assetPath: 'assets/ratelust.png',
+                onTap: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.serviceList),
+              ),
+              _DashboardTile(
+                label: 'Customers',
+                assetPath: 'assets/customers.png',
+                onTap: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.customers),
               ),
             ],
           ),
@@ -128,35 +156,65 @@ class _DashboardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const tileRadius = 12.0;
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(tileRadius),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(tileRadius),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 106,
-                height: 106,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(tileRadius),
-                  child: Image.asset(assetPath, fit: BoxFit.contain),
-                ),
+    final radius = 16.r;
+    final tileSurface = Theme.of(context).colorScheme.surface;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: tileSurface,
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 16.r,
+              spreadRadius: 0,
+              offset: Offset(0, 4.h),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 4.r,
+              spreadRadius: 0,
+              offset: Offset(0, 1.h),
+            ),
+          ],
+        ),
+        child: Material(
+          color: tileSurface,
+          borderRadius: BorderRadius.circular(radius),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(radius),
+            onTap: onTap,
+            splashColor: AppColors.primary.withOpacity(0.12),
+            highlightColor: AppColors.primary.withOpacity(0.06),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(14.w, 20.h, 14.w, 18.h),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Image
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: Image.asset(assetPath, fit: BoxFit.contain),
+                    ),
+                  ),
+                  SizedBox(height: 14.h),
+                  // Label
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 15.5.sp,
+                      fontWeight: FontWeight.w300,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.2,
+                      height: 1.1,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
