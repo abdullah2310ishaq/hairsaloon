@@ -1,24 +1,36 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/core/storage/hive_boxes.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/expenses/presentation/state/expenses_store.dart';
+import 'package:hairsaloon/src/features/finance/domain/entities/finance_period.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
 class EmployeeIncomeDetailScreen extends StatelessWidget {
-  const EmployeeIncomeDetailScreen({super.key, required this.employee});
+  const EmployeeIncomeDetailScreen({
+    super.key,
+    required this.employee,
+    required this.period,
+    required this.anchorDate,
+  });
 
   final EmployeeItem employee;
+  final FinancePeriod period;
+  final DateTime anchorDate;
 
   @override
   Widget build(BuildContext context) {
     final employeeName = employee.fullName.trim().toLowerCase();
+    final commissionPercent = _toDouble(employee.commission);
     final bills = context
         .watch<BillingStore>()
         .bills
         .where((bill) => bill.employeeName == employee.fullName)
+        .where((bill) => _isInPeriod(bill.createdAt, anchorDate, period))
         .toList(growable: false);
     final expenses = context
         .watch<ExpensesStore>()
@@ -28,18 +40,35 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
               item.employeeName.trim().toLowerCase() == employeeName &&
               item.status.trim().toLowerCase() == 'unpaid',
         )
+        .where((item) => _isInPeriod(item.date, anchorDate, period))
         .toList(growable: false);
-    final dailyRows = _buildDailyRows(bills, _toDouble(employee.commission));
+    final dailyRows = _buildDailyRows(bills, commissionPercent);
 
-    final totalEarning = bills.fold<double>(
-      0,
-      (sum, bill) => sum + bill.grandTotal,
-    );
+    final totalSales = bills.fold<double>(0, (sum, bill) => sum + bill.grandTotal);
+    final totalEarning = (totalSales * commissionPercent) / 100;
+    final totalCashSales = bills
+        .where((b) => b.paymentType.trim().toLowerCase() == 'cash')
+        .fold<double>(0, (sum, b) => sum + b.grandTotal);
+    final totalPaid = (totalCashSales * commissionPercent) / 100;
+    final totalCommissionDue = totalEarning - totalPaid;
+
     final totalDue = expenses.fold<double>(
       0.0,
       (sum, item) => sum + item.amount,
     );
     final safeDue = totalDue < 0 ? 0.0 : totalDue;
+    final netDue = (totalCommissionDue - safeDue);
+    final safeNetDue = netDue < 0 ? 0.0 : netDue;
+
+    final payoutBox = Hive.box<Map>(HiveBoxes.employeePayouts);
+    final payoutKey = _payoutKey(employee.id, period, anchorDate);
+    final settledRaw = payoutBox.get(payoutKey);
+    final isSettled = settledRaw != null;
+    final settledAt = isSettled
+        ? DateTime.tryParse((settledRaw['createdAt'] as String?) ?? '')
+        : null;
+    final settledAmount = isSettled ? (settledRaw['amount'] as num?)?.toDouble() ?? 0.0 : 0.0;
+    final dueAfterSettlement = isSettled ? 0.0 : safeNetDue;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -57,7 +86,21 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: _dueAmountCard(safeDue),
+              child: _dueAmountCard(
+                dueAfterSettlement,
+                subtitle: _settlementSubtitle(isSettled, settledAt, settledAmount),
+                onSettleUp: (dueAfterSettlement <= 0)
+                    ? null
+                    : () => _settleUpPayout(
+                          context: context,
+                          payoutKey: payoutKey,
+                          employeeId: employee.id,
+                          employeeName: employee.fullName,
+                          period: period,
+                          anchorDate: anchorDate,
+                          amount: dueAfterSettlement,
+                        ),
+              ),
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 12)),
@@ -65,7 +108,7 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
               child: Text(
-                'Daily Income',
+                _dailyTitle(period),
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -91,6 +134,40 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: _DailyIncomeTile(row: row),
+                  );
+                },
+              ),
+            ),
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: Text(
+                'Bills',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+            ),
+          ),
+          if (bills.isEmpty)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: _EmptyStateCard(),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+              sliver: SliverList.builder(
+                itemCount: bills.length,
+                itemBuilder: (context, index) {
+                  final bill = bills[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _BillTile(bill: bill),
                   );
                 },
               ),
@@ -142,6 +219,52 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
 
     rows.sort((a, b) => b.date.compareTo(a.date));
     return rows;
+  }
+
+  static String _dailyTitle(FinancePeriod period) {
+    switch (period) {
+      case FinancePeriod.daily:
+        return 'Daily Income';
+      case FinancePeriod.weekly:
+        return 'Weekly Income (day-wise)';
+      case FinancePeriod.monthly:
+        return 'Monthly Income (day-wise)';
+    }
+  }
+
+  static bool _isInPeriod(DateTime date, DateTime anchor, FinancePeriod period) {
+    final target = DateTime(date.year, date.month, date.day);
+    switch (period) {
+      case FinancePeriod.daily:
+        return target == DateTime(anchor.year, anchor.month, anchor.day);
+      case FinancePeriod.weekly:
+        final start = DateTime(anchor.year, anchor.month, anchor.day)
+            .subtract(Duration(days: anchor.weekday - 1));
+        final end = start.add(const Duration(days: 6));
+        return !target.isBefore(start) && !target.isAfter(end);
+      case FinancePeriod.monthly:
+        return target.year == anchor.year && target.month == anchor.month;
+    }
+  }
+
+  static String _payoutKey(String employeeId, FinancePeriod period, DateTime anchor) {
+    final day = DateTime(anchor.year, anchor.month, anchor.day);
+    switch (period) {
+      case FinancePeriod.daily:
+        return 'payout:$employeeId:daily:${day.toIso8601String()}';
+      case FinancePeriod.weekly:
+        final start = day.subtract(Duration(days: day.weekday - 1));
+        return 'payout:$employeeId:weekly:${start.toIso8601String()}';
+      case FinancePeriod.monthly:
+        final month = DateTime(anchor.year, anchor.month, 1);
+        return 'payout:$employeeId:monthly:${month.toIso8601String()}';
+    }
+  }
+
+  static String? _settlementSubtitle(bool isSettled, DateTime? settledAt, double amount) {
+    if (!isSettled) return null;
+    final when = settledAt == null ? '—' : _formatDate(settledAt);
+    return 'Settled: ${_formatCurrency(amount)} on $when';
   }
 }
 
@@ -311,7 +434,11 @@ class _TopSection extends StatelessWidget {
   }
 }
 
-Widget _dueAmountCard(double dueAmount) {
+Widget _dueAmountCard(
+  double dueAmount, {
+  String? subtitle,
+  VoidCallback? onSettleUp,
+}) {
   final safeDue = dueAmount < 0 ? 0.0 : dueAmount;
   final isSettled = safeDue <= 0;
   return Container(
@@ -349,6 +476,17 @@ Widget _dueAmountCard(double dueAmount) {
                   height: 1.0,
                 ),
               ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -362,13 +500,71 @@ Widget _dueAmountCard(double dueAmount) {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
             ),
-            onPressed: isSettled ? null : () {},
+            onPressed: isSettled ? null : onSettleUp,
             child: const Text('Settle Up'),
           ),
         ),
       ],
     ),
   );
+}
+
+Future<void> _settleUpPayout({
+  required BuildContext context,
+  required String payoutKey,
+  required String employeeId,
+  required String employeeName,
+  required FinancePeriod period,
+  required DateTime anchorDate,
+  required double amount,
+}) async {
+  final safeAmount = amount < 0 ? 0.0 : amount;
+  if (safeAmount <= 0) return;
+
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: AppColors.primary,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      title: const Text(
+        'Settle Up',
+        style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
+      ),
+      content: Text(
+        'Mark ${employeeName.trim()} payout as settled?\n\nAmount: ${_formatCurrency(safeAmount)}',
+        style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          style: TextButton.styleFrom(foregroundColor: Colors.black87),
+          child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w700)),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          ),
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text('Settle', style: TextStyle(fontWeight: FontWeight.w800)),
+        ),
+      ],
+    ),
+  );
+  if (confirm != true) return;
+
+  final box = Hive.box<Map>(HiveBoxes.employeePayouts);
+  await box.put(payoutKey, <String, dynamic>{
+    'id': payoutKey,
+    'employeeId': employeeId,
+    'employeeName': employeeName.trim(),
+    'period': period.name,
+    'anchorDate': DateTime(anchorDate.year, anchorDate.month, anchorDate.day).toIso8601String(),
+    'amount': safeAmount,
+    'createdAt': DateTime.now().toIso8601String(),
+  });
 }
 
 class _DailyIncomeTile extends StatelessWidget {
@@ -516,6 +712,87 @@ class _EmptyStateCard extends StatelessWidget {
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
+      ),
+    );
+  }
+}
+
+class _BillTile extends StatelessWidget {
+  const _BillTile({required this.bill});
+
+  final Bill bill;
+
+  @override
+  Widget build(BuildContext context) {
+    final customerLabel = bill.customerName.trim().isNotEmpty
+        ? bill.customerName.trim()
+        : (bill.customerPhone.trim().isNotEmpty
+            ? bill.customerPhone.trim()
+            : 'Walk-in Customer');
+    final dateText =
+        '${bill.createdAt.day.toString().padLeft(2, '0')}-${bill.createdAt.month.toString().padLeft(2, '0')}-${bill.createdAt.year}';
+    final timeText =
+        '${bill.createdAt.hour.toString().padLeft(2, '0')}:${bill.createdAt.minute.toString().padLeft(2, '0')}';
+    final firstService =
+        bill.lines.isNotEmpty ? bill.lines.first.serviceName : 'No service';
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 86,
+            child: Text(
+              '$timeText\n$dateText',
+              style: const TextStyle(
+                fontSize: 10.5,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  customerLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${bill.paymentType}  •  $firstService',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            _formatCurrency(bill.grandTotal),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
       ),
     );
   }

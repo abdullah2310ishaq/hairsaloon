@@ -14,6 +14,8 @@ class CustomerHistoryScreen extends StatelessWidget {
   final List<Bill> bills;
 
   double get _totalSpent => bills.fold(0, (sum, bill) => sum + bill.grandTotal);
+  double get _totalTax => bills.fold(0, (sum, bill) => sum + bill.taxAmount);
+  double get _totalSubTotal => bills.fold(0, (sum, bill) => sum + bill.subTotal);
 
   @override
   Widget build(BuildContext context) {
@@ -45,12 +47,30 @@ class CustomerHistoryScreen extends StatelessWidget {
               children: [
                 Text(
                   customerLabel,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Visits: ${bills.length}  •  Total Billing: Rs.${_totalSpent.toStringAsFixed(0)}',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w400),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _MiniStat(label: 'Visits', value: bills.length.toString()),
+                    const SizedBox(width: 8),
+                    _MiniStat(
+                      label: 'Sub Total',
+                      value: 'Rs.${_totalSubTotal.toStringAsFixed(0)}',
+                    ),
+                    const SizedBox(width: 8),
+                    _MiniStat(
+                      label: 'Tax',
+                      value: 'Rs.${_totalTax.toStringAsFixed(0)}',
+                    ),
+                    const SizedBox(width: 8),
+                    _MiniStat(
+                      label: 'Total',
+                      value: 'Rs.${_totalSpent.toStringAsFixed(0)}',
+                      emphasize: true,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -98,7 +118,7 @@ class CustomerHistoryScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       line.serviceName,
-                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500),
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
                     ),
                   ),
                   Text(
@@ -115,11 +135,102 @@ class CustomerHistoryScreen extends StatelessWidget {
             ),
           ),
           const Divider(height: 14),
-          Text(
-            'Employee: ${bill.employeeName}  •  Payment: ${bill.paymentType}',
-            style: const TextStyle(fontSize: 10.5, color: Color(0xFF555555)),
+          Row(
+            children: [
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: Color(0xFF555555),
+                    ),
+                    children: [
+                      const TextSpan(text: 'Employee: '),
+                      TextSpan(
+                        text: bill.employeeName,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const TextSpan(text: '  •  Payment: '),
+                      TextSpan(
+                        text: bill.paymentType,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Sub: Rs.${bill.subTotal.toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF555555)),
+                  ),
+                  Text(
+                    'Tax: Rs.${bill.taxAmount.toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF555555)),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({
+    required this.label,
+    required this.value,
+    this.emphasize = false,
+  });
+
+  final String label;
+  final String value;
+  final bool emphasize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: emphasize
+              ? AppColors.primary.withOpacity(0.18)
+              : const Color(0xFFF6F6F6),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: emphasize
+                ? AppColors.primary.withOpacity(0.45)
+                : const Color(0xFFEAEAEA),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF6B6B6B),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: emphasize ? FontWeight.w900 : FontWeight.w800,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

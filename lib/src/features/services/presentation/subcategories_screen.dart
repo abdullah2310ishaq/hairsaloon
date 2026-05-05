@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
+import 'package:hairsaloon/src/features/services/presentation/subcategory_services_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -15,6 +16,7 @@ class SubcategoriesScreen extends StatefulWidget {
 
 class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
   final TextEditingController _subcategoryController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
   late String _selectedCategory;
 
   @override
@@ -32,6 +34,7 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
   @override
   void dispose() {
     _subcategoryController.dispose();
+    _priceController.dispose();
     super.dispose();
   }
 
@@ -84,6 +87,12 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
             controller: _subcategoryController,
             decoration: _fieldDecoration('Enter Subcategory Name'),
           ),
+          const SizedBox(height: 10),
+          TextFormField(
+            controller: _priceController,
+            keyboardType: TextInputType.number,
+            decoration: _fieldDecoration('Enter Price'),
+          ),
           const SizedBox(height: 12),
           SizedBox(
             height: 48,
@@ -111,46 +120,74 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
   }
 
   Widget _buildSubcategoryTile(String name) {
+    final price =
+        context.watch<ServicesStore>().serviceFor(
+          category: _selectedCategory,
+          subcategory: name,
+        )?.price ??
+        0.0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
           borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => SubcategoryServicesScreen(
+                  category: _selectedCategory,
+                  subcategory: name,
                 ),
               ),
-            ),
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'edit') {
-                  _showEditSubcategoryDialog(name);
-                  return;
-                }
-                if (value == 'delete') {
-                  context.read<ServicesStore>().deleteSubcategory(
-                    category: _selectedCategory,
-                    subcategory: name,
-                  );
-                }
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem<String>(value: 'edit', child: Text('Edit')),
-                PopupMenuItem<String>(value: 'delete', child: Text('Delete')),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Rs.${price.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _showEditSubcategoryDialog(name);
+                      return;
+                    }
+                    if (value == 'delete') {
+                      context.read<ServicesStore>().deleteSubcategory(
+                        category: _selectedCategory,
+                        subcategory: name,
+                      );
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem<String>(value: 'edit', child: Text('Edit')),
+                    PopupMenuItem<String>(value: 'delete', child: Text('Delete')),
+                  ],
+                  icon: const Icon(CupertinoIcons.ellipsis_vertical),
+                ),
               ],
-              icon: const Icon(CupertinoIcons.ellipsis_vertical),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -180,13 +217,31 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
 
   Future<void> _saveSubcategory() async {
     final value = _subcategoryController.text.trim();
-    final added = await context.read<ServicesStore>().addSubcategory(
+    final parsed = double.tryParse(_priceController.text.trim());
+    if (value.isEmpty || parsed == null || parsed <= 0) {
+      _showMessage('Enter valid service name and price.');
+      return;
+    }
+
+    final store = context.read<ServicesStore>();
+    final added = await store.addSubcategory(
       category: _selectedCategory,
       subcategory: value,
     );
-    if (!added) return;
 
+    // Even if the subcategory already exists, allow updating its price.
+    await store.updatePriceForSubcategory(
+      category: _selectedCategory,
+      subcategory: value,
+      price: parsed,
+    );
+
+    if (!mounted) return;
+    if (!added) {
+      _showMessage('Price updated.');
+    }
     _subcategoryController.clear();
+    _priceController.clear();
   }
 
   Future<void> _showEditSubcategoryDialog(String oldName) async {
@@ -196,49 +251,97 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
           category: _selectedCategory,
           subcategory: oldName,
         )?.price ??
-        context.read<ServicesStore>().seededPrice(_selectedCategory, oldName);
+        0.0;
     final priceController = TextEditingController(
-      text: currentPrice.toStringAsFixed(0),
+      text: currentPrice <= 0 ? '' : currentPrice.toStringAsFixed(0),
     );
 
     final shouldUpdate = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit Subcategory'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(hintText: 'Subcategory name'),
+      builder: (dialogContext) {
+        const radius = 6.0;
+        InputDecoration fieldDecoration(String label) {
+          return InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(color: Colors.black87),
+            filled: true,
+            fillColor: Colors.white,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: priceController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: 'Price'),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(radius),
+              borderSide: BorderSide.none,
+            ),
+          );
+        }
+
+        return AlertDialog(
+          backgroundColor: AppColors.primary,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          title: const Text(
+            'Edit Service',
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: const TextStyle(color: Colors.black),
+                decoration: fieldDecoration('Service Name'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: priceController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.black),
+                decoration: fieldDecoration('Price'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              style: TextButton.styleFrom(foregroundColor: Colors.black87),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(radius),
+                ),
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text(
+                'Update',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Update'),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
     if (shouldUpdate != true || !mounted) return;
 
     final newName = nameController.text.trim();
-    final parsedPrice = double.tryParse(priceController.text.trim());
-    if (newName.isEmpty || parsedPrice == null || parsedPrice <= 0) {
-      _showMessage('Enter valid subcategory and price.');
+    final parsed = double.tryParse(priceController.text.trim());
+    if (newName.isEmpty || parsed == null || parsed <= 0) {
+      _showMessage('Enter valid service name and price.');
       return;
     }
 
@@ -251,11 +354,10 @@ class _SubcategoriesScreenState extends State<SubcategoriesScreen> {
       _showMessage('Unable to update. Name may already exist.');
       return;
     }
-
     await context.read<ServicesStore>().updatePriceForSubcategory(
       category: _selectedCategory,
       subcategory: newName,
-      price: parsedPrice,
+      price: parsed,
     );
     _showMessage('Subcategory updated.');
   }

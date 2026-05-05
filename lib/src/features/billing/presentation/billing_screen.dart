@@ -81,6 +81,9 @@ class _BillingScreenState extends State<BillingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    // Keep content above the bottom navigation bar (DashboardShell has extendBody: true).
+    final bottomSafeSpace = bottomInset + 120;
     final services = context.watch<ServicesStore>().services;
     final activeEmployees = context
         .watch<EmployeesStore>()
@@ -127,7 +130,7 @@ class _BillingScreenState extends State<BillingScreen> {
       ),
       body: ListView(
         controller: _scrollCtrl,
-        padding: EdgeInsets.zero,
+        padding: EdgeInsets.only(bottom: bottomSafeSpace.toDouble()),
         children: [
           Container(
             color: AppColors.primary,
@@ -354,22 +357,26 @@ class _BillingScreenState extends State<BillingScreen> {
                                   }
                                   return null;
                                 },
-                                selectedItemBuilder: (context) => employeeOptions
-                                    .map(
-                                      (name) => Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          _formatEmployeeLabel(
-                                            name,
-                                            activeEmployees: activeEmployees,
+                                selectedItemBuilder: (context) =>
+                                    employeeOptions
+                                        .map(
+                                          (name) => Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              _formatEmployeeLabel(
+                                                name,
+                                                activeEmployees:
+                                                    activeEmployees,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                              ),
+                                            ),
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 11),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
+                                        )
+                                        .toList(),
                                 items: employeeOptions
                                     .map(
                                       (name) => DropdownMenuItem(

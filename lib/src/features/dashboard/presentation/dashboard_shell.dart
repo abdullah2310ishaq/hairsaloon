@@ -146,7 +146,6 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final screenWidth = MediaQuery.of(context).size.width;
 
     return Container(
       decoration: BoxDecoration(
@@ -173,14 +172,11 @@ class _BottomNav extends StatelessWidget {
           children: List.generate(_navItems.length, (i) {
             final item = _navItems[i];
             final isActive = i == currentIndex;
-            // Responsive: divide available width equally
-            final itemWidth = screenWidth / _navItems.length;
 
-            return GestureDetector(
-              onTap: () => onTap(i),
-              behavior: HitTestBehavior.opaque,
-              child: SizedBox(
-                width: itemWidth,
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => onTap(i),
+                behavior: HitTestBehavior.opaque,
                 child: _NavTile(item: item, isActive: isActive),
               ),
             );
@@ -202,39 +198,36 @@ class _NavTile extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Active pill indicator + icon
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? AppColors.primary.withOpacity(0.18)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Icon(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary.withOpacity(0.22) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
               isActive ? item.activeIcon : item.icon,
               size: 22,
               color: isActive ? Colors.black : const Color(0xFFAAAAAA),
             ),
-          ),
-          const SizedBox(height: 3),
-          // Label
-          AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 220),
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-              color: isActive ? Colors.black : const Color(0xFFAAAAAA),
-              letterSpacing: 0.1,
+            const SizedBox(height: 4),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 220),
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                color: isActive ? Colors.black : const Color(0xFFAAAAAA),
+                letterSpacing: 0.1,
+              ),
+              child: Text(item.label),
             ),
-            child: Text(item.label),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

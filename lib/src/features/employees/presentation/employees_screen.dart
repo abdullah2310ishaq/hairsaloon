@@ -1,9 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employee_agreement_screen.dart';
 import 'package:hairsaloon/src/features/employees/presentation/employee_details_screen.dart';
+import 'package:hairsaloon/src/features/employees/presentation/employee_history_screen.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
@@ -91,140 +93,164 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           const SizedBox(height: 10),
           if (_showAddForm) ...[_addForm(), const SizedBox(height: 12)],
           ..._filteredEmployees.map(
-            (e) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _EmployeeAvatar(employeeId: e.id),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          e.speciality?.trim().isNotEmpty == true
-                              ? e.speciality!
-                              : 'General Specialist',
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          e.fullName,
-                          style: const TextStyle(
-                            fontSize: 27 / 2,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        if ((e.employeeType ?? '').trim().isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.22),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              e.employeeType!.trim(),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+            (e) => InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                final bills = context
+                    .read<BillingStore>()
+                    .bills
+                    .where((b) => b.employeeName == e.fullName)
+                    .toList()
+                  ..sort(
+                    (a, b) => b.createdAt.compareTo(a.createdAt),
+                  );
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => EmployeeHistoryScreen(
+                      employee: e,
+                      bills: bills,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        e.isActive ? 'Active' : 'Inactive',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: e.isActive
-                              ? Colors.black
-                              : Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  PopupMenuButton<String>(
-                    onSelected: (value) async {
-                      if (value == 'agreement') {
-                        final updated = await Navigator.of(context)
-                            .push<EmployeeItem>(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    EmployeeAgreementScreen(employee: e),
-                              ),
-                            );
-                        if (updated == null) return;
-                        context.read<EmployeesStore>().update(updated);
-                        return;
-                      }
-                      if (value == 'edit') {
-                        final updated = await Navigator.of(context)
-                            .push<EmployeeItem>(
-                              MaterialPageRoute(
-                                builder: (_) => EmployeeDetailsScreen(item: e),
-                              ),
-                            );
-                        if (updated == null) return;
-                        context.read<EmployeesStore>().update(updated);
-                        return;
-                      }
-                      if (value == 'delete') {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (dContext) => AlertDialog(
-                            title: const Text('Delete Employee'),
-                            content: Text('Delete ${e.fullName}?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.of(dContext).pop(false),
-                                child: const Text('Cancel'),
-                              ),
-                              FilledButton(
-                                onPressed: () =>
-                                    Navigator.of(dContext).pop(true),
-                                child: const Text('Delete'),
-                              ),
-                            ],
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _EmployeeAvatar(employeeId: e.id),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            e.speciality?.trim().isNotEmpty == true
+                                ? e.speciality!
+                                : 'General Specialist',
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87,
+                            ),
                           ),
-                        );
-                        if (confirm != true) return;
-                        context.read<EmployeesStore>().delete(e.id);
-                      }
-                    },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(
-                        value: 'agreement',
-                        child: Text('Agreement'),
+                          const SizedBox(height: 3),
+                          Text(
+                            e.fullName,
+                            style: const TextStyle(
+                              fontSize: 27 / 2,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          if ((e.employeeType ?? '').trim().isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.22),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                e.employeeType!.trim(),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      PopupMenuItem(value: 'delete', child: Text('Delete')),
-                    ],
-                    icon: const Icon(CupertinoIcons.ellipsis_vertical),
-                  ),
-                ],
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          e.isActive ? 'Active' : 'Inactive',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: e.isActive
+                                ? Colors.black
+                                : Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        if (value == 'agreement') {
+                          final updated =
+                              await Navigator.of(context).push<EmployeeItem>(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  EmployeeAgreementScreen(employee: e),
+                            ),
+                          );
+                          if (updated == null) return;
+                          context.read<EmployeesStore>().update(updated);
+                          return;
+                        }
+                        if (value == 'edit') {
+                          final updated =
+                              await Navigator.of(context).push<EmployeeItem>(
+                            MaterialPageRoute(
+                              builder: (_) => EmployeeDetailsScreen(item: e),
+                            ),
+                          );
+                          if (updated == null) return;
+                          context.read<EmployeesStore>().update(updated);
+                          return;
+                        }
+                        if (value == 'delete') {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (dContext) => AlertDialog(
+                              title: const Text('Delete Employee'),
+                              content: Text('Delete ${e.fullName}?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(dContext).pop(false),
+                                  child: const Text('Cancel'),
+                                ),
+                                FilledButton(
+                                  onPressed: () =>
+                                      Navigator.of(dContext).pop(true),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm != true) return;
+                          context.read<EmployeesStore>().delete(e.id);
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(
+                          value: 'agreement',
+                          child: Text('Agreement'),
+                        ),
+                        PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      ],
+                      icon: const Icon(CupertinoIcons.ellipsis_vertical),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

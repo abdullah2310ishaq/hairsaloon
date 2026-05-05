@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/services/domain/entities/service_item.dart';
 import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
+import 'package:hairsaloon/src/features/services/presentation/subcategory_services_screen.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -22,17 +23,21 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   String? _newGender;
   String? _newAgeGroup;
   String _newPrice = '';
+  final TextEditingController _newServiceNameCtrl = TextEditingController();
 
   List<String> get _categories => ['All', ...context.watch<ServicesStore>().categories];
-  List<String> get _newSubcategories => _newCategory == null
-      ? const <String>[]
-      : context.watch<ServicesStore>().subcategoriesFor(_newCategory!);
 
   List<String> get _visibleCategories {
     if (_selectedCategoryTab == 'All') {
       return context.watch<ServicesStore>().categories;
     }
     return <String>[_selectedCategoryTab];
+  }
+
+  @override
+  void dispose() {
+    _newServiceNameCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -56,19 +61,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        actions: [
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _showAddForm = !_showAddForm;
-              });
-            },
-            icon: Icon(
-              _showAddForm ? CupertinoIcons.xmark : CupertinoIcons.add,
-              color: Colors.black,
-            ),
-          ),
-        ],
+        actions: const [],
       ),
       body: Column(
         children: [
@@ -135,6 +128,11 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   }
 
   Widget _buildAddFormCard(BuildContext context) {
+    final store = context.watch<ServicesStore>();
+    final availableSubcategories = _newCategory == null
+        ? const <String>[]
+        : store.subcategoriesFor(_newCategory!);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -175,17 +173,31 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                   )
                   .toList(),
               onChanged: (value) {
+                final nextCategory = value;
                 setState(() {
-                  _newCategory = value;
-                  final subcategories = _newSubcategories;
-                  _newSubcategory = subcategories.isEmpty
-                      ? null
-                      : subcategories.first;
+                  _newCategory = nextCategory;
+                  // User will pick subcategory manually.
+                  _newSubcategory = null;
+                  _newServiceNameCtrl.clear();
                 });
               },
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Please select category.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _newServiceNameCtrl,
+              decoration: _fieldDecoration('Service Name (optional)'),
+              onChanged: (_) => setState(() {}),
+              validator: (_) {
+                final typed = _newServiceNameCtrl.text.trim();
+                if (typed.isNotEmpty) return null;
+                if (_newSubcategory == null || _newSubcategory!.trim().isEmpty) {
+                  return 'Please select subcategory or enter service name.';
                 }
                 return null;
               },
@@ -199,7 +211,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
               ),
               value: _newSubcategory,
               decoration: _fieldDecoration('Select Subcategory'),
-              items: _newSubcategories
+              items: availableSubcategories
                   .map(
                     (e) => DropdownMenuItem(
                       value: e,
@@ -213,17 +225,20 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                     ),
                   )
                   .toList(),
-              onChanged: _newSubcategories.isEmpty
+              onChanged: availableSubcategories.isEmpty
                   ? null
-                  : (value) => setState(() => _newSubcategory = value),
+                  : (value) {
+                      _newServiceNameCtrl.clear();
+                      setState(() => _newSubcategory = value);
+                    },
               validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please select subcategory.';
-                }
+                final typed = _newServiceNameCtrl.text.trim();
+                if (typed.isNotEmpty) return null;
+                if (value == null || value.trim().isEmpty) return 'Please select subcategory.';
                 return null;
               },
             ),
-            if (_newCategory != null && _newSubcategories.isEmpty) ...[
+            if (_newCategory != null && availableSubcategories.isEmpty) ...[
               const SizedBox(height: 8),
               const Text(
                 'No subcategory found. Please add from Subcategories screen.',
@@ -254,6 +269,12 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                   )
                   .toList(),
               onChanged: (value) => setState(() => _newGender = value),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please select gender.';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
@@ -279,6 +300,12 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                   )
                   .toList(),
               onChanged: (value) => setState(() => _newAgeGroup = value),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please select age group.';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 10),
             TextFormField(
@@ -343,24 +370,36 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   Future<void> _saveService() async {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
-    if (_newCategory == null ||
-        _newSubcategory == null ||
-        _newGender == null ||
-        _newAgeGroup == null) {
+    if (_newCategory == null || _newGender == null || _newAgeGroup == null) {
       return;
     }
 
+    final typedName = _newServiceNameCtrl.text.trim();
+    final finalSubcategory = typedName.isNotEmpty
+        ? typedName
+        : (_newSubcategory ?? '').trim();
+    if (finalSubcategory.isEmpty) return;
+
+    if (typedName.isNotEmpty) {
+      await context.read<ServicesStore>().addSubcategory(
+            category: _newCategory!,
+            subcategory: typedName,
+          );
+    }
+
+    await context.read<ServicesStore>().addService(
+          ServiceItem(
+            id: DateTime.now().microsecondsSinceEpoch.toString(),
+            category: _newCategory!,
+            subcategory: finalSubcategory,
+            gender: _newGender!,
+            ageGroup: _newAgeGroup!,
+            price: double.parse(_newPrice),
+          ),
+        );
+
+    if (!mounted) return;
     setState(() {
-      context.read<ServicesStore>().addService(
-        ServiceItem(
-          id: DateTime.now().microsecondsSinceEpoch.toString(),
-          category: _newCategory!,
-          subcategory: _newSubcategory!,
-          gender: _newGender!,
-          ageGroup: _newAgeGroup!,
-          price: double.parse(_newPrice),
-        ),
-      );
       _selectedCategoryTab = _newCategory!;
       _showAddForm = false;
       _newCategory = null;
@@ -368,6 +407,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
       _newGender = null;
       _newAgeGroup = null;
       _newPrice = '';
+      _newServiceNameCtrl.clear();
       _formKey.currentState?.reset();
     });
   }
@@ -461,6 +501,7 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
   @override
   Widget build(BuildContext context) {
     final subcategories = _subcategories;
+    final store = context.watch<ServicesStore>();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
@@ -486,53 +527,78 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
         itemCount: subcategories.length,
         itemBuilder: (context, index) {
           final subcategory = subcategories[index];
-          final service = context.watch<ServicesStore>().serviceFor(
-            category: widget.category,
-            subcategory: subcategory,
-          );
           final price =
-              service?.price ??
-              context.watch<ServicesStore>().seededPrice(widget.category, subcategory);
+              store.serviceFor(
+                category: widget.category,
+                subcategory: subcategory,
+              )?.price ??
+              0.0;
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
+            child: Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      subcategory,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SubcategoryServicesScreen(
+                        category: widget.category,
+                        subcategory: subcategory,
                       ),
                     ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          subcategory,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'Rs.${price.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      PopupMenuButton<String>(
+                        onSelected: (value) async {
+                          if (value == 'edit') {
+                            await _showEditDialog(
+                              oldSubcategory: subcategory,
+                              currentPrice: price,
+                            );
+                            return;
+                          }
+                          if (value == 'delete') {
+                            await context.read<ServicesStore>().deleteSubcategory(
+                                  category: widget.category,
+                                  subcategory: subcategory,
+                                );
+                          }
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        ],
+                        icon: const Icon(CupertinoIcons.ellipsis_vertical, size: 18),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'Rs.${price.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    onPressed: () => _showEditDialog(
-                      oldSubcategory: subcategory,
-                      currentPrice: price,
-                    ),
-                    icon: const Icon(CupertinoIcons.pencil, size: 18),
-                    color: Colors.black54,
-                    tooltip: 'Edit',
-                  ),
-                ],
+                ),
               ),
             ),
           );
@@ -547,37 +613,83 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
   }) async {
     final nameController = TextEditingController(text: oldSubcategory);
     final priceController = TextEditingController(
-      text: currentPrice.toStringAsFixed(0),
+      text: currentPrice <= 0 ? '' : currentPrice.toStringAsFixed(0),
     );
 
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
+        const radius = 6.0;
+        InputDecoration fieldDecoration(String label) {
+          return InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(color: Colors.black87),
+            filled: true,
+            fillColor: Colors.white,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(radius),
+              borderSide: BorderSide.none,
+            ),
+          );
+        }
+
         return AlertDialog(
-          title: const Text('Edit Subcategory'),
+          backgroundColor: AppColors.primary,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          title: const Text(
+            'Edit Service',
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(hintText: 'Subcategory name'),
+                style: const TextStyle(color: Colors.black),
+                decoration: fieldDecoration('Service Name'),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: priceController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(hintText: 'Price'),
+                style: const TextStyle(color: Colors.black),
+                decoration: fieldDecoration('Price'),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+              style: TextButton.styleFrom(foregroundColor: Colors.black87),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
             FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(radius),
+                ),
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Update'),
+              child: const Text(
+                'Update',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
           ],
         );
@@ -587,9 +699,9 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
     if (result != true || !mounted) return;
 
     final newName = nameController.text.trim();
-    final parsedPrice = double.tryParse(priceController.text.trim());
-    if (newName.isEmpty || parsedPrice == null || parsedPrice <= 0) {
-      _showMessage('Enter a valid subcategory name and price.');
+    final parsed = double.tryParse(priceController.text.trim());
+    if (newName.isEmpty || parsed == null || parsed <= 0) {
+      _showMessage('Enter valid service name and price.');
       return;
     }
 
@@ -604,13 +716,13 @@ class _CategoryRatesScreenState extends State<_CategoryRatesScreen> {
     }
 
     await context.read<ServicesStore>().updatePriceForSubcategory(
-      category: widget.category,
-      subcategory: newName,
-      price: parsedPrice,
-    );
+          category: widget.category,
+          subcategory: newName,
+          price: parsed,
+        );
 
     setState(() {});
-    _showMessage('Subcategory updated.');
+    _showMessage('Service updated.');
   }
 
   void _showMessage(String message) {

@@ -123,7 +123,14 @@ class _AppDrawerState extends State<AppDrawer> {
                   _Item(
                     icon: CupertinoIcons.money_dollar_circle,
                     title: 'Currency Change',
-                    onTap: () => Navigator.pop(context),
+                    onTap: () async {
+                      final rootNavigator = Navigator.of(
+                        context,
+                        rootNavigator: true,
+                      );
+                      Navigator.pop(context);
+                      await _showCurrencyDialog(rootNavigator.context);
+                    },
                   ),
                   _Item(
                     icon: CupertinoIcons.percent,
@@ -273,44 +280,151 @@ class _AppDrawerState extends State<AppDrawer> {
     );
     final didSave = await showDialog<bool>(
       context: context,
+      builder: (dialogContext) {
+        const radius = 6.0;
+        InputDecoration fieldDecoration() {
+          return InputDecoration(
+            hintText: 'Enter percentage e.g. 16',
+            hintStyle: const TextStyle(color: Colors.black54),
+            suffixText: '%',
+            suffixStyle: const TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w800,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(radius),
+              borderSide: BorderSide.none,
+            ),
+          );
+        }
+
+        return AlertDialog(
+          backgroundColor: _C.lime,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          title: const Text(
+            'Tax Rate',
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+            decoration: fieldDecoration(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              style: TextButton.styleFrom(foregroundColor: Colors.black87),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(radius),
+                ),
+              ),
+              onPressed: () {
+                final value = double.tryParse(controller.text.trim());
+                if (value == null || value < 0) {
+                  Navigator.of(dialogContext).pop(false);
+                  return;
+                }
+                settingsStore.setTaxRate(value);
+                Navigator.of(dialogContext).pop(true);
+              },
+              child: const Text(
+                'Save',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    if (didSave != true) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      const SnackBar(
+        content: Text('Tax rate saved'),
+        duration: Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _showCurrencyDialog(BuildContext context) async {
+    final settingsStore = context.read<SettingsStore>();
+    final current = settingsStore.currencyCode;
+    final controller = TextEditingController(text: current);
+
+    final didSave = await showDialog<bool>(
+      context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: _C.surfaceHigh,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
-          'Tax Rate',
+          'Currency Change',
           style: TextStyle(color: _C.textPrimary, fontWeight: FontWeight.w600),
         ),
-        content: TextField(
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          style: const TextStyle(color: _C.textPrimary),
-          decoration: InputDecoration(
-            hintText: 'Enter percentage e.g. 16',
-            hintStyle: const TextStyle(color: _C.textSecondary),
-            suffixText: '%',
-            suffixStyle: const TextStyle(
-              color: _C.lime,
-              fontWeight: FontWeight.w600,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Current: $current',
+              style: const TextStyle(
+                color: _C.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            filled: true,
-            fillColor: _C.surface,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.black),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              textCapitalization: TextCapitalization.characters,
+              maxLength: 3,
+              style: const TextStyle(color: _C.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Enter new currency code (e.g. PKR)',
+                hintStyle: const TextStyle(color: _C.textSecondary),
+                filled: true,
+                fillColor: _C.surface,
+                counterText: '',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.black),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.black),
+                ),
+              ),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.black, width: 1.5),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.black),
-            ),
-          ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text(
               'Cancel',
               style: TextStyle(color: _C.textSecondary),
@@ -324,13 +438,13 @@ class _AppDrawerState extends State<AppDrawer> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            onPressed: () {
-              final value = double.tryParse(controller.text.trim());
-              if (value == null || value < 0) {
+            onPressed: () async {
+              final next = controller.text.trim().toUpperCase();
+              if (next.length != 3) {
                 Navigator.of(dialogContext).pop(false);
                 return;
               }
-              settingsStore.setTaxRate(value);
+              await settingsStore.setCurrencyCode(next);
               Navigator.of(dialogContext).pop(true);
             },
             child: const Text(
@@ -341,10 +455,11 @@ class _AppDrawerState extends State<AppDrawer> {
         ],
       ),
     );
+
     if (didSave != true) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       const SnackBar(
-        content: Text('Tax rate saved'),
+        content: Text('Currency updated'),
         duration: Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
       ),

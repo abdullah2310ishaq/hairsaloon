@@ -63,10 +63,19 @@ class HiveServicesRepository {
     final tree = _readTree();
     final values = tree[category];
     if (values == null) return;
+    final normalized = subcategory.trim();
     values.removeWhere(
       (item) => item.toLowerCase() == subcategory.trim().toLowerCase(),
     );
     await _categoriesBox.put(_categoryTreeKey, _treeToMap(tree));
+
+    // Also delete all services for this subcategory (price lives on services).
+    final services = getServices();
+    for (final service in services) {
+      if (service.category != category) continue;
+      if (service.subcategory.toLowerCase() != normalized.toLowerCase()) continue;
+      await _servicesBox.delete(service.id);
+    }
   }
 
   Future<bool> renameSubcategory({
@@ -120,30 +129,12 @@ class HiveServicesRepository {
   }
 
   Future<void> ensureServicesForCurrentSubcategories() async {
-    final tree = _readTree();
-    final services = getServices().toList(growable: true);
-
-    for (final category in tree.keys) {
-      final subcategories = tree[category] ?? const <String>[];
-      for (final subcategory in subcategories) {
-        final exists = services.any(
-          (item) =>
-              item.category == category && item.subcategory == subcategory,
-        );
-        if (exists) continue;
-
-        final added = ServiceItem(
-          id: '${DateTime.now().microsecondsSinceEpoch}_${category}_$subcategory',
-          category: category,
-          subcategory: subcategory,
-          gender: 'Other',
-          ageGroup: 'Adult',
-          price: seededPrice(category, subcategory),
-        );
-        services.add(added);
-        await _servicesBox.put(added.id, _serviceToMap(added));
-      }
-    }
+    // IMPORTANT: Subcategories do NOT have prices. Services are added explicitly
+    // via Rate List. Historically we auto-created a "service" per subcategory
+    // with a seeded/random price — that caused confusing pricing.
+    //
+    // We now only clean up those legacy auto-created seeded services.
+    await _cleanupLegacySeededSubcategoryServices();
   }
 
   double seededPrice(String category, String subcategory) {
@@ -153,6 +144,20 @@ class HiveServicesRepository {
     );
     final bucket = hash % 31;
     return (300 + (bucket * 100)).toDouble();
+  }
+
+  Future<void> _cleanupLegacySeededSubcategoryServices() async {
+    final services = getServices();
+    for (final service in services) {
+      if (service.gender != 'Other' || service.ageGroup != 'Adult') continue;
+      final expected = seededPrice(service.category, service.subcategory);
+      if (service.price != expected) continue;
+      // Matches the old ID pattern "<micros>_<category>_<subcategory>"
+      if (!service.id.endsWith('_${service.category}_${service.subcategory}')) {
+        continue;
+      }
+      await _servicesBox.delete(service.id);
+    }
   }
 
   Future<void> addService(ServiceItem service) async {
@@ -193,20 +198,21 @@ class HiveServicesRepository {
     if (normalized.isEmpty) return;
 
     final services = getServices();
-    var found = false;
+    var updatedAny = false;
     for (final service in services) {
       if (service.category != category) continue;
-      if (service.subcategory.toLowerCase() != normalized.toLowerCase()) {
-        continue;
-      }
-      found = true;
+      if (service.subcategory.toLowerCase() != normalized.toLowerCase()) continue;
+      updatedAny = true;
       final updated = service.copyWith(price: price);
       await _servicesBox.put(updated.id, _serviceToMap(updated));
     }
 
-    if (found) return;
+    if (updatedAny) return;
+
+    // If no service exists yet, create a single canonical service entry.
+    // We keep gender/ageGroup stable for billing display.
     final created = ServiceItem(
-      id: '${DateTime.now().microsecondsSinceEpoch}_${category}_$subcategory',
+      id: 'svc_${DateTime.now().microsecondsSinceEpoch}',
       category: category,
       subcategory: normalized,
       gender: 'Other',

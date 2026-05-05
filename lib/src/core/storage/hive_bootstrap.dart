@@ -22,6 +22,7 @@ class HiveBootstrap {
       Hive.openBox<Map>(HiveBoxes.customerContacts),
       Hive.openBox<Map>(HiveBoxes.employees),
       Hive.openBox<Map>(HiveBoxes.expenses),
+      Hive.openBox<Map>(HiveBoxes.employeePayouts),
       Hive.openBox<Map>(HiveBoxes.services),
       Hive.openBox<Map>(HiveBoxes.categories),
       Hive.openBox<dynamic>(HiveBoxes.settings),
