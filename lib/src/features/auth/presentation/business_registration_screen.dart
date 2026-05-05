@@ -38,6 +38,7 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
   String _businessName = '';
   String _phoneNumber = '';
   late final TextEditingController _phoneController;
+  bool _isPhoneLocked = false;
   String _address = '';
   String? _businessType;
   String? _city;
@@ -67,6 +68,17 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
         );
 
     _animController.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final userPhone = context.read<AuthStore>().currentUser?.phone.trim();
+    if (userPhone == null || userPhone.isEmpty) return;
+    if (_isPhoneLocked) return;
+    _isPhoneLocked = true;
+    _phoneController.text = userPhone;
+    _phoneNumber = userPhone;
   }
 
   @override
@@ -200,6 +212,7 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
                         _buildField(
                           TextFormField(
                             controller: _phoneController,
+                            enabled: !_isPhoneLocked,
                             style: TextStyle(
                               color: _C.textPrimary,
                               fontSize: 14.sp,

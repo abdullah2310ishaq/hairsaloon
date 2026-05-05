@@ -25,7 +25,11 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
   Widget build(BuildContext context) {
     final bills = context.watch<BillingStore>().bills;
     final expenses = context.watch<ExpensesStore>().items;
-    final employees = context.watch<EmployeesStore>().employees;
+    final employees = context
+        .watch<EmployeesStore>()
+        .employees
+        .where((e) => e.isActive)
+        .toList(growable: false);
 
     final periodRevenue = bills
         .where((b) => _isInSelectedPeriod(b.createdAt))

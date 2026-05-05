@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/customer_contact.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
+import 'package:hairsaloon/src/features/employees/domain/entities/employee_item.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/features/services/presentation/state/services_store.dart';
@@ -19,6 +20,7 @@ class BillingScreen extends StatefulWidget {
 }
 
 class _BillingScreenState extends State<BillingScreen> {
+  final _headerFormKey = GlobalKey<FormState>();
   final _phoneCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   final _servicesSectionKey = GlobalKey();
@@ -26,18 +28,20 @@ class _BillingScreenState extends State<BillingScreen> {
   String _selectedCategory = 'All';
   final Set<String> _selectedServiceIds = <String>{};
   final Map<String, double> _servicePricesById = <String, double>{};
-  late String _employee;
-  String _paymentType = 'Cash';
+  String? _employee;
+  String? _paymentType;
+  bool _didAttemptSave = false;
   CustomerContact? _selectedCustomer;
 
   List<String> get _categories {
-    final values = context
-        .watch<ServicesStore>()
-        .services
-        .map((service) => service.category)
-        .toSet()
-        .toList()
-      ..sort();
+    final values =
+        context
+            .watch<ServicesStore>()
+            .services
+            .map((service) => service.category)
+            .toSet()
+            .toList()
+          ..sort();
     return <String>['All', ...values];
   }
 
@@ -61,14 +65,8 @@ class _BillingScreenState extends State<BillingScreen> {
   @override
   void initState() {
     super.initState();
-    final activeEmployees = context.read<EmployeesStore>().employees
-        .where((e) => e.isActive)
-        .map((e) => e.fullName)
-        .where((name) => name.isNotEmpty)
-        .toList();
-    _employee = activeEmployees.isNotEmpty
-        ? activeEmployees.first
-        : 'Unassigned';
+    _employee = null;
+    _paymentType = null;
     for (final service in context.read<ServicesStore>().services) {
       _servicePricesById[service.id] = service.price;
     }
@@ -84,13 +82,18 @@ class _BillingScreenState extends State<BillingScreen> {
   @override
   Widget build(BuildContext context) {
     final services = context.watch<ServicesStore>().services;
-    final employeeOptions = context.watch<EmployeesStore>().employees
+    final activeEmployees = context
+        .watch<EmployeesStore>()
+        .employees
         .where((e) => e.isActive)
-        .map((e) => e.fullName)
-        .where((name) => name.isNotEmpty)
-        .toList();
-    if (employeeOptions.isEmpty) employeeOptions.add('Unassigned');
-    if (!employeeOptions.contains(_employee)) _employee = employeeOptions.first;
+        .where((e) => e.fullName.trim().isNotEmpty)
+        .toList(growable: false);
+    final employeeOptions = activeEmployees.isEmpty
+        ? <String>['Unassigned']
+        : activeEmployees.map((e) => e.fullName).toList(growable: false);
+    if (_employee != null && !employeeOptions.contains(_employee)) {
+      _employee = null;
+    }
     final customerPhone = _phoneCtrl.text.trim();
     final phoneMatches = _customerMatches(customerPhone);
     final showPhoneMatches =
@@ -215,10 +218,9 @@ class _BillingScreenState extends State<BillingScreen> {
                         onChanged: (_) {
                           if (!mounted) return;
                           final phone = _phoneCtrl.text.trim();
-                          final exact =
-                              context.read<BillingStore>().getCustomerContactByPhone(
-                                    phone,
-                                  );
+                          final exact = context
+                              .read<BillingStore>()
+                              .getCustomerContactByPhone(phone);
                           setState(() {
                             _hidePhoneSuggestions = false;
                             _selectedCustomer = exact;
@@ -227,9 +229,7 @@ class _BillingScreenState extends State<BillingScreen> {
                         onSubmitted: (value) {
                           if (value.trim().isEmpty) return;
                           if (_hasKnownPhone(value)) return;
-                          _promptAddCustomer(
-                            initialPhone: value.trim(),
-                          );
+                          _promptAddCustomer(initialPhone: value.trim());
                         },
                         decoration: _smallDecoration(
                           'Enter Customer Phone Number',
@@ -325,110 +325,150 @@ class _BillingScreenState extends State<BillingScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _employee,
-                        isExpanded: true,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black,
-                        ),
-                        iconSize: 16,
-                        decoration: _smallDecoration('Employee'),
-                        selectedItemBuilder: (context) => employeeOptions
-                            .map(
-                              (name) => Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 11),
+                      child: Form(
+                        key: _headerFormKey,
+                        autovalidateMode: _didAttemptSave
+                            ? AutovalidateMode.always
+                            : AutovalidateMode.disabled,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _employee,
+                                isExpanded: true,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black,
                                 ),
-                              ),
-                            )
-                            .toList(),
-                        items: employeeOptions
-                            .map(
-                              (name) => DropdownMenuItem(
-                                value: name,
-                                child: Text(
-                                  name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                iconSize: 16,
+                                decoration: _smallDecoration(
+                                  'Employee (required)',
                                 ),
+                                hint: const Text(
+                                  'Select Employee',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Select employee';
+                                  }
+                                  return null;
+                                },
+                                selectedItemBuilder: (context) => employeeOptions
+                                    .map(
+                                      (name) => Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          _formatEmployeeLabel(
+                                            name,
+                                            activeEmployees: activeEmployees,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 11),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                items: employeeOptions
+                                    .map(
+                                      (name) => DropdownMenuItem(
+                                        value: name,
+                                        child: Text(
+                                          _formatEmployeeLabel(
+                                            name,
+                                            activeEmployees: activeEmployees,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() => _employee = value);
+                                },
                               ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() => _employee = value);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _paymentType,
-                        isExpanded: true,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black,
-                        ),
-                        iconSize: 16,
-                        decoration: _smallDecoration('Payment'),
-                        selectedItemBuilder: (context) =>
-                            const ['Cash', 'Card', 'Online']
-                                .map(
-                                  (type) => Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      type,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(fontSize: 11),
-                                    ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _paymentType,
+                                isExpanded: true,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black,
+                                ),
+                                iconSize: 16,
+                                decoration: _smallDecoration(
+                                  'Payment (required)',
+                                ),
+                                hint: const Text(
+                                  'Select Payment',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Select payment';
+                                  }
+                                  return null;
+                                },
+                                selectedItemBuilder: (context) =>
+                                    const ['Cash', 'Card', 'Online']
+                                        .map(
+                                          (type) => Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              type,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(fontSize: 11),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                items: const ['Cash', 'Card', 'Online']
+                                    .map(
+                                      (type) => DropdownMenuItem(
+                                        value: type,
+                                        child: Text(
+                                          type,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() => _paymentType = value);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            SizedBox(
+                              width: 96,
+                              height: 44,
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.black,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                )
-                                .toList(),
-                        items: const ['Cash', 'Card', 'Online']
-                            .map(
-                              (type) => DropdownMenuItem(
-                                value: type,
-                                child: Text(
-                                  type,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                onPressed: _saveBill,
+                                child: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Save Bill',
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    style: TextStyle(fontSize: 11),
+                                  ),
                                 ),
                               ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() => _paymentType = value);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    SizedBox(
-                      width: 96,
-                      height: 44,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: _saveBill,
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            'Save Bill',
-                            maxLines: 1,
-                            softWrap: false,
-                            style: TextStyle(fontSize: 11),
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -593,39 +633,96 @@ class _BillingScreenState extends State<BillingScreen> {
       final result = await showDialog<CustomerContact?>(
         context: context,
         builder: (dialogContext) {
+          const radius = 6.0;
           return AlertDialog(
-            title: const Text('Add Customer'),
+            backgroundColor: AppColors.primary,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radius),
+            ),
+            title: const Text(
+              'Add Customer',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameCtrl,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(labelText: 'Customer Name'),
+                  style: const TextStyle(color: Colors.black),
+                  decoration: InputDecoration(
+                    labelText: 'Customer Name',
+                    labelStyle: const TextStyle(color: Colors.black87),
+                    filled: true,
+                    fillColor: Colors.white,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(radius),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
+                const SizedBox(height: 10),
                 TextField(
                   controller: phoneCtrl,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(labelText: 'Customer Number'),
+                  style: const TextStyle(color: Colors.black),
+                  decoration: InputDecoration(
+                    labelText: 'Customer Number',
+                    labelStyle: const TextStyle(color: Colors.black87),
+                    filled: true,
+                    fillColor: Colors.white,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(radius),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(null),
-                child: const Text('Cancel'),
+                style: TextButton.styleFrom(foregroundColor: Colors.black87),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
               FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(radius),
+                  ),
+                ),
                 onPressed: () {
                   final name = nameCtrl.text.trim();
                   final phone = phoneCtrl.text.trim();
                   if (phone.isEmpty) return;
-                  Navigator.of(dialogContext).pop(
-                    CustomerContact(name: name, phone: phone),
-                  );
+                  Navigator.of(
+                    dialogContext,
+                  ).pop(CustomerContact(name: name, phone: phone));
                 },
-                child: const Text('Save'),
+                child: const Text(
+                  'Save',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
             ],
           );
@@ -635,9 +732,9 @@ class _BillingScreenState extends State<BillingScreen> {
       if (!mounted || result == null) return;
 
       await context.read<BillingStore>().addOrUpdateCustomerContact(
-            name: result.name,
-            phone: result.phone,
-          );
+        name: result.name,
+        phone: result.phone,
+      );
       if (!mounted) return;
 
       setState(() {
@@ -655,6 +752,12 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   Future<void> _saveBill() async {
+    setState(() => _didAttemptSave = true);
+    final headerState = _headerFormKey.currentState;
+    if (headerState == null || !headerState.validate()) {
+      _showMessage('Please select employee and payment method.');
+      return;
+    }
     final services = context.read<ServicesStore>().services;
     final selectedLines = _selectedLines(services);
     if (selectedLines.isEmpty) {
@@ -671,7 +774,10 @@ class _BillingScreenState extends State<BillingScreen> {
       }
     }
     final settingsStore = context.read<SettingsStore>();
-    final subTotal = selectedLines.fold<double>(0, (sum, line) => sum + line.total);
+    final subTotal = selectedLines.fold<double>(
+      0,
+      (sum, line) => sum + line.total,
+    );
     final taxPercent = settingsStore.taxRate;
     final taxAmount = (subTotal * taxPercent) / 100;
     final grandTotal = subTotal + taxAmount;
@@ -684,8 +790,8 @@ class _BillingScreenState extends State<BillingScreen> {
       createdAt: DateTime.now(),
       customerName: contact?.name.trim() ?? '',
       customerPhone: phone,
-      employeeName: _employee,
-      paymentType: _paymentType,
+      employeeName: _employee ?? '',
+      paymentType: _paymentType ?? '',
       lines: selectedLines,
       subTotal: subTotal,
       taxPercent: taxPercent,
@@ -724,21 +830,13 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   void _resetForNewBill() {
-    final activeEmployees = context.read<EmployeesStore>().employees
-        .where((e) => e.isActive)
-        .map((e) => e.fullName)
-        .where((name) => name.isNotEmpty)
-        .toList();
-    final defaultEmployee = activeEmployees.isNotEmpty
-        ? activeEmployees.first
-        : 'Unassigned';
-
     setState(() {
       _phoneCtrl.clear();
       _selectedCategory = 'All';
       _selectedServiceIds.clear();
-      _employee = defaultEmployee;
-      _paymentType = 'Cash';
+      _employee = null;
+      _paymentType = null;
+      _didAttemptSave = false;
       _selectedCustomer = null;
     });
   }
@@ -762,6 +860,17 @@ class _BillingScreenState extends State<BillingScreen> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  String _formatEmployeeLabel(
+    String fullName, {
+    required List<EmployeeItem> activeEmployees,
+  }) {
+    final match = activeEmployees.where((e) => e.fullName == fullName).toList();
+    if (match.isEmpty) return fullName;
+    final type = (match.first.employeeType ?? '').trim();
+    if (type.isEmpty) return fullName;
+    return '$fullName • $type';
   }
 }
 
@@ -804,5 +913,3 @@ class _TagChip extends StatelessWidget {
     );
   }
 }
-
-

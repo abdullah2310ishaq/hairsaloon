@@ -20,8 +20,16 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
   late final TextEditingController _cnicCtrl;
   late final TextEditingController _addressCtrl;
   late final TextEditingController _specialityCtrl;
+  String? _specialistCategory;
   bool _editing = false;
   late bool _isActive;
+
+  static const List<String> _specialistCategories = <String>[
+    'Men Specialist',
+    'Women Specialist',
+    'Kids Specialist',
+    'General',
+  ];
 
   @override
   void initState() {
@@ -32,6 +40,9 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
     _cnicCtrl = TextEditingController(text: widget.item.cnicNumber);
     _addressCtrl = TextEditingController(text: widget.item.homeAddress);
     _specialityCtrl = TextEditingController(text: widget.item.speciality ?? '');
+    _specialistCategory = (widget.item.employeeType ?? '').trim().isEmpty
+        ? null
+        : widget.item.employeeType!.trim();
     _isActive = widget.item.isActive;
   }
 
@@ -96,6 +107,44 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
           ),
           const SizedBox(height: 10),
           _field(_addressCtrl, 'Home Address'),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: _specialistCategory,
+            isExpanded: true,
+            decoration: InputDecoration(
+              hintText: 'Specialist Category',
+              hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+            ),
+            items: _specialistCategories
+                .map(
+                  (value) => DropdownMenuItem(
+                    value: value,
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: _editing ? (v) => setState(() => _specialistCategory = v) : null,
+          ),
           const SizedBox(height: 10),
           _field(_specialityCtrl, 'Speciality'),
           const SizedBox(height: 8),
@@ -190,6 +239,7 @@ class _EmployeeDetailsScreenState extends State<EmployeeDetailsScreen> {
       cnicNumber: cnic,
       homeAddress: address,
       speciality: speciality,
+      employeeType: _specialistCategory?.trim(),
       isActive: _isActive,
     );
     Navigator.of(context).pop(updated);

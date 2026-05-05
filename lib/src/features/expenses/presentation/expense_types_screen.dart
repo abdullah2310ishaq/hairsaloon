@@ -41,7 +41,12 @@ class _ExpenseTypesScreenState extends State<ExpenseTypesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final employees = context.watch<EmployeesStore>().employees.map((e) => e.fullName).toList();
+    final employees = context
+        .watch<EmployeesStore>()
+        .employees
+        .where((e) => e.isActive)
+        .map((e) => e.fullName)
+        .toList();
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
       appBar: AppBar(

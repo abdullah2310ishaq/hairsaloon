@@ -9,9 +9,10 @@ class FirebasePhoneOtpDataSource {
 
   Future<String> sendOtp({required String phone}) async {
     final completer = Completer<String>();
+    final normalized = _normalizePhone(phone);
 
     await _auth.verifyPhoneNumber(
-      phoneNumber: phone,
+      phoneNumber: normalized,
       verificationCompleted: (credential) async {
         // Auto-retrieval on some devices; treat as verified but we still need
         // a verificationId for manual flow. If we can't, we just ignore and let
@@ -44,5 +45,9 @@ class FirebasePhoneOtpDataSource {
   }
 
   Future<void> signOut() => _auth.signOut();
+
+  String _normalizePhone(String value) {
+    return value.replaceAll(RegExp(r'[^0-9+]'), '');
+  }
 }
 

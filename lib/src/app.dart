@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hairsaloon/src/features/auth/data/datasources/firebase_phone_otp_datasource.dart';
 import 'package:hairsaloon/src/features/auth/data/datasources/firestore_users_datasource.dart';
 import 'package:hairsaloon/src/features/auth/data/datasources/local_auth_session_datasource.dart';
@@ -26,6 +27,7 @@ import 'package:hairsaloon/src/features/billing/presentation/saved_bills_screen.
 import 'package:hairsaloon/src/features/billing/data/repositories/hive_billing_repository.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/business_profile/data/repositories/shared_prefs_business_profile_repository.dart';
+import 'package:hairsaloon/src/features/business_profile/data/repositories/synced_business_profile_repository.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/clear_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/get_business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/usecases/save_business_profile.dart';
@@ -261,7 +263,10 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
     await servicesStore.load();
     final settingsStore = SettingsStore(repository: HiveSettingsRepository());
 
-    final repository = SharedPrefsBusinessProfileRepository(prefs: prefs);
+    final repository = SyncedBusinessProfileRepository(
+      local: SharedPrefsBusinessProfileRepository(prefs: prefs),
+      firestore: FirebaseFirestore.instance,
+    );
     final profileNotifier = BusinessProfileNotifier(
       getBusinessProfile: GetBusinessProfile(repository),
       saveBusinessProfile: SaveBusinessProfile(repository),

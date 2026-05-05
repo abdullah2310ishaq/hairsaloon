@@ -19,7 +19,11 @@ class _EmployeeEarningsScreenState extends State<EmployeeEarningsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final employees = context.watch<EmployeesStore>().employees;
+    final employees = context
+        .watch<EmployeesStore>()
+        .employees
+        .where((e) => e.isActive)
+        .toList(growable: false);
     final bills = context.watch<BillingStore>().bills;
 
     final rows = employees.map((employee) {

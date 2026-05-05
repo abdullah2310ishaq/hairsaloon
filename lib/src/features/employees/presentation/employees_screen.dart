@@ -26,7 +26,15 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   final _cnicCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _specialityCtrl = TextEditingController();
+  String? _specialistCategory;
   bool _newEmployeeActive = true;
+
+  static const List<String> _specialistCategories = <String>[
+    'Men Specialist',
+    'Women Specialist',
+    'Kids Specialist',
+    'General',
+  ];
 
   List<EmployeeItem> get _employees => context.watch<EmployeesStore>().employees;
   List<EmployeeItem> get _filteredEmployees {
@@ -117,6 +125,27 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                             fontWeight: FontWeight.w400,
                           ),
                         ),
+                        if ((e.employeeType ?? '').trim().isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.22),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              e.employeeType!.trim(),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -243,6 +272,45 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             const SizedBox(height: 8),
             _field(_addressCtrl, 'Home Address'),
             const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _specialistCategory,
+              isExpanded: true,
+              decoration: InputDecoration(
+                hintText: 'Specialist Category',
+                hintStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+              items: _specialistCategories
+                  .map(
+                    (value) => DropdownMenuItem(
+                      value: value,
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (value) => setState(() => _specialistCategory = value),
+              validator: (value) =>
+                  (value == null || value.trim().isEmpty) ? 'Required' : null,
+            ),
+            const SizedBox(height: 8),
             _field(_specialityCtrl, 'Speciality'),
             const SizedBox(height: 8),
             Container(
@@ -356,6 +424,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           homeAddress: _addressCtrl.text.trim(),
           isActive: _newEmployeeActive,
           speciality: _specialityCtrl.text.trim(),
+          employeeType: _specialistCategory?.trim(),
         ),
       );
       _firstNameCtrl.clear();
@@ -364,6 +433,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       _cnicCtrl.clear();
       _addressCtrl.clear();
       _specialityCtrl.clear();
+      _specialistCategory = null;
       _showAddForm = false;
       _newEmployeeActive = true;
     });
