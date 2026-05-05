@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hairsaloon/src/features/billing/data/repositories/hive_billing_repository.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
+import 'package:hairsaloon/src/features/billing/domain/entities/customer_contact.dart';
 
 class BillingStore extends ChangeNotifier {
   BillingStore({required HiveBillingRepository repository})
@@ -29,6 +30,23 @@ class BillingStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  CustomerContact? getCustomerContactByPhone(String phone) {
+    return _repository.getCustomerContactByPhone(phone);
+  }
+
+  Future<bool> addOrUpdateCustomerContact({
+    required String name,
+    required String phone,
+  }) async {
+    final created = await _repository.addOrUpdateCustomerContact(
+      name: name,
+      phone: phone,
+    );
+    _hydrate();
+    notifyListeners();
+    return created;
+  }
+
   Future<bool> addKnownCustomerPhone(String phone) async {
     final added = await _repository.addKnownCustomerPhone(phone);
     if (!added) return false;
@@ -43,6 +61,10 @@ class BillingStore extends ChangeNotifier {
 
   List<String> searchCustomerPhones(String query) {
     return _repository.searchCustomerPhones(query);
+  }
+
+  List<CustomerContact> searchCustomerContacts(String query) {
+    return _repository.searchCustomerContacts(query);
   }
 }
 

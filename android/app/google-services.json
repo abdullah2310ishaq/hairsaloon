@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "126178194716",
+    "project_id": "jewellwy-store",
+    "storage_bucket": "jewellwy-store.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:126178194716:android:388b03c967912ad65ef6d9",
+        "android_client_info": {
+          "package_name": "com.barbershop.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "126178194716-qhso8h3qt3npdl0q69cl0tja6n7prac2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYC_BKlXtdeLjSMVp2RIHyIr-lRdPInxc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "126178194716-qhso8h3qt3npdl0q69cl0tja6n7prac2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

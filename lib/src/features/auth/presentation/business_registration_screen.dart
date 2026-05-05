@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
 import 'package:hairsaloon/src/features/business_profile/domain/entities/business_profile.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
@@ -440,7 +441,8 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
       address: _address.isEmpty ? '$_area, ${_city ?? ''}' : _address,
     );
     await context.read<BusinessProfileNotifier>().save(profile);
-    Navigator.of(context).pushReplacementNamed(AppRoutes.homeShell);
+    await context.read<AuthStore>().loadCurrentUser();
+    Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.homeShell, (r) => false);
   }
 
   Future<bool> _onWillPop() async {

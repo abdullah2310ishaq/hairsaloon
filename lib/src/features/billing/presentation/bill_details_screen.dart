@@ -54,8 +54,24 @@ class BillDetailsScreen extends StatelessWidget {
                   (line) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: Text(line.serviceName)),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(line.serviceName),
+                              if (line.tag.trim().isNotEmpty)
+                                Text(
+                                  line.tag,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                         Text('x${line.qty}'),
                         const SizedBox(width: 8),
                         Text('Rs.${line.total.toStringAsFixed(0)}'),

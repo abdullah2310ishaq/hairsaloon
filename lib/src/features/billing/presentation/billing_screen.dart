@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
+import 'package:hairsaloon/src/features/billing/domain/entities/customer_contact.dart';
 import 'package:hairsaloon/src/features/billing/presentation/state/billing_store.dart';
 import 'package:hairsaloon/src/features/employees/presentation/state/employees_store.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
@@ -27,6 +28,7 @@ class _BillingScreenState extends State<BillingScreen> {
   final Map<String, double> _servicePricesById = <String, double>{};
   late String _employee;
   String _paymentType = 'Cash';
+  CustomerContact? _selectedCustomer;
 
   List<String> get _categories {
     final values = context
@@ -90,7 +92,7 @@ class _BillingScreenState extends State<BillingScreen> {
     if (employeeOptions.isEmpty) employeeOptions.add('Unassigned');
     if (!employeeOptions.contains(_employee)) _employee = employeeOptions.first;
     final customerPhone = _phoneCtrl.text.trim();
-    final phoneMatches = _phoneMatches(customerPhone);
+    final phoneMatches = _customerMatches(customerPhone);
     final showPhoneMatches =
         !_hidePhoneSuggestions &&
         customerPhone.isNotEmpty &&
@@ -104,7 +106,9 @@ class _BillingScreenState extends State<BillingScreen> {
     final taxAmount = (subTotal * taxPercent) / 100;
     final grandTotal = subTotal + taxAmount;
     final hasCustomerInfo = customerPhone.isNotEmpty;
-    final customerInfoText = 'Customer Phone: $customerPhone';
+    final customerInfoText = _selectedCustomer == null
+        ? 'Customer Phone: $customerPhone'
+        : 'Customer: ${_selectedCustomer!.displayLabel}';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F3F3),
@@ -210,13 +214,21 @@ class _BillingScreenState extends State<BillingScreen> {
                         keyboardType: TextInputType.phone,
                         onChanged: (_) {
                           if (!mounted) return;
-                          setState(() => _hidePhoneSuggestions = false);
+                          final phone = _phoneCtrl.text.trim();
+                          final exact =
+                              context.read<BillingStore>().getCustomerContactByPhone(
+                                    phone,
+                                  );
+                          setState(() {
+                            _hidePhoneSuggestions = false;
+                            _selectedCustomer = exact;
+                          });
                         },
                         onSubmitted: (value) {
                           if (value.trim().isEmpty) return;
                           if (_hasKnownPhone(value)) return;
-                          _showMessage(
-                            'Phone number does not exist. Tap Add New.',
+                          _promptAddCustomer(
+                            initialPhone: value.trim(),
                           );
                         },
                         decoration: _smallDecoration(
@@ -235,9 +247,7 @@ class _BillingScreenState extends State<BillingScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        onPressed: () {
-                          _addCurrentPhoneAsNew();
-                        },
+                        onPressed: _promptAddCustomer,
                         child: const Text(
                           'Add New',
                           style: TextStyle(fontSize: 11),
@@ -263,6 +273,7 @@ class _BillingScreenState extends State<BillingScreen> {
                                 setState(() {
                                   _phoneCtrl.text = customer.phone;
                                   _hidePhoneSuggestions = true;
+                                  _selectedCustomer = customer;
                                 });
                                 FocusScope.of(context).unfocus();
                               },
@@ -281,7 +292,7 @@ class _BillingScreenState extends State<BillingScreen> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        customer.phone,
+                                        customer.displayLabel,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(fontSize: 11.5),
@@ -573,22 +584,74 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
-  Future<void> _addCurrentPhoneAsNew() async {
-    final phone = _phoneCtrl.text.trim();
-    if (phone.isEmpty) {
-      _showMessage('Enter customer phone number first.');
-      return;
+  Future<void> _promptAddCustomer({String? initialPhone}) async {
+    final prefillPhone = (initialPhone ?? _phoneCtrl.text).trim();
+
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController(text: prefillPhone);
+    try {
+      final result = await showDialog<CustomerContact?>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Add Customer'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'Customer Name'),
+                ),
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.done,
+                  decoration: const InputDecoration(labelText: 'Customer Number'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(null),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final name = nameCtrl.text.trim();
+                  final phone = phoneCtrl.text.trim();
+                  if (phone.isEmpty) return;
+                  Navigator.of(dialogContext).pop(
+                    CustomerContact(name: name, phone: phone),
+                  );
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted || result == null) return;
+
+      await context.read<BillingStore>().addOrUpdateCustomerContact(
+            name: result.name,
+            phone: result.phone,
+          );
+      if (!mounted) return;
+
+      setState(() {
+        _phoneCtrl.text = result.phone;
+        _hidePhoneSuggestions = true;
+        _selectedCustomer = result;
+      });
+
+      FocusScope.of(context).unfocus();
+      _scrollToServices();
+    } finally {
+      nameCtrl.dispose();
+      phoneCtrl.dispose();
     }
-    final added = await context.read<BillingStore>().addKnownCustomerPhone(phone);
-    setState(() {
-      _hidePhoneSuggestions = true;
-    });
-    if (added) {
-      _showMessage('New customer number added.');
-    } else {
-      _showMessage('Customer number already exists.');
-    }
-    _scrollToServices();
   }
 
   Future<void> _saveBill() async {
@@ -600,18 +663,26 @@ class _BillingScreenState extends State<BillingScreen> {
     }
     final phone = _phoneCtrl.text.trim();
     if (phone.isNotEmpty && !_hasKnownPhone(phone)) {
-      _showMessage('Number not found. Select suggestion or tap Add New.');
-      return;
+      await _promptAddCustomer(initialPhone: phone);
+      if (!mounted) return;
+      final updatedPhone = _phoneCtrl.text.trim();
+      if (updatedPhone.isNotEmpty && !_hasKnownPhone(updatedPhone)) {
+        return;
+      }
     }
     final settingsStore = context.read<SettingsStore>();
     final subTotal = selectedLines.fold<double>(0, (sum, line) => sum + line.total);
     final taxPercent = settingsStore.taxRate;
     final taxAmount = (subTotal * taxPercent) / 100;
     final grandTotal = subTotal + taxAmount;
+
+    final contact = phone.isEmpty
+        ? null
+        : context.read<BillingStore>().getCustomerContactByPhone(phone);
     final bill = Bill(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       createdAt: DateTime.now(),
-      customerName: '',
+      customerName: contact?.name.trim() ?? '',
       customerPhone: phone,
       employeeName: _employee,
       paymentType: _paymentType,
@@ -622,6 +693,7 @@ class _BillingScreenState extends State<BillingScreen> {
       grandTotal: grandTotal,
     );
     await context.read<BillingStore>().addBill(bill);
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Bill saved successfully'),
@@ -637,10 +709,13 @@ class _BillingScreenState extends State<BillingScreen> {
     });
   }
 
-  List<_PhoneMatch> _phoneMatches(String query) {
-    final matches = context.read<BillingStore>().searchCustomerPhones(query);
-    return matches
-        .map((phone) => _PhoneMatch(phone: phone))
+  List<CustomerContact> _customerMatches(String query) {
+    final matches = context.read<BillingStore>().searchCustomerContacts(query);
+    if (matches.isNotEmpty) return matches;
+
+    final phones = context.read<BillingStore>().searchCustomerPhones(query);
+    return phones
+        .map((phone) => CustomerContact(name: '', phone: phone))
         .toList(growable: false);
   }
 
@@ -664,6 +739,7 @@ class _BillingScreenState extends State<BillingScreen> {
       _selectedServiceIds.clear();
       _employee = defaultEmployee;
       _paymentType = 'Cash';
+      _selectedCustomer = null;
     });
   }
 
@@ -729,8 +805,4 @@ class _TagChip extends StatelessWidget {
   }
 }
 
-class _PhoneMatch {
-  const _PhoneMatch({required this.phone});
 
-  final String phone;
-}

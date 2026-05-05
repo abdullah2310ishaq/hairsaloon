@@ -112,10 +112,10 @@ class DashboardScreen extends StatelessWidget {
           child: Column(
             children: [
               GridView.count(
-                crossAxisCount: 2,
+                crossAxisCount: 1,
                 crossAxisSpacing: 14.w,
                 mainAxisSpacing: 14.h,
-                childAspectRatio: 0.94,
+                childAspectRatio: 3.2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
@@ -125,24 +125,6 @@ class DashboardScreen extends StatelessWidget {
                     onTap: () => Navigator.of(
                       context,
                     ).pushNamed(AppRoutes.financeOverview),
-                  ),
-                  _DashboardTile(
-                    label: 'Employees',
-                    assetPath: 'assets/employees.png',
-                    onTap: () =>
-                        Navigator.of(context).pushNamed(AppRoutes.employees),
-                  ),
-                  _DashboardTile(
-                    label: 'Rate List',
-                    assetPath: 'assets/ratelust.png',
-                    onTap: () =>
-                        Navigator.of(context).pushNamed(AppRoutes.serviceList),
-                  ),
-                  _DashboardTile(
-                    label: 'Customers',
-                    assetPath: 'assets/customers.png',
-                    onTap: () =>
-                        Navigator.of(context).pushNamed(AppRoutes.customers),
                   ),
                 ],
               ),

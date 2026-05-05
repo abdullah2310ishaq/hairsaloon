@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
 import 'package:hairsaloon/src/features/settings/presentation/state/settings_store.dart';
@@ -68,6 +69,22 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
                   _Item(
+                    icon: CupertinoIcons.person_circle,
+                    title: 'Account',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushNamed(AppRoutes.accountProfile);
+                    },
+                  ),
+                  _Item(
+                    icon: CupertinoIcons.person_3,
+                    title: 'Employees',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushNamed(AppRoutes.employees);
+                    },
+                  ),
+                  _Item(
                     icon: CupertinoIcons.person_2,
                     title: 'Customers',
                     onTap: () {
@@ -83,6 +100,14 @@ class _AppDrawerState extends State<AppDrawer> {
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.categories);
+                    },
+                  ),
+                  _Item(
+                    icon: CupertinoIcons.money_dollar,
+                    title: 'Rate List',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushNamed(AppRoutes.serviceList);
                     },
                   ),
                   const SizedBox(height: 10),
@@ -334,6 +359,7 @@ class _AppDrawerState extends State<AppDrawer> {
   Future<void> _handleLogout(BuildContext context) async {
     final navigator = Navigator.of(context);
     final profileNotifier = context.read<BusinessProfileNotifier>();
+    final authStore = context.read<AuthStore>();
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -377,6 +403,7 @@ class _AppDrawerState extends State<AppDrawer> {
 
     // Close drawer first, then clear session and reset navigation stack.
     navigator.pop();
+    await authStore.logout();
     await profileNotifier.clear();
     if (!mounted) return;
 

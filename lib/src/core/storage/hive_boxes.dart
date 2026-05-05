@@ -3,6 +3,7 @@ class HiveBoxes {
 
   static const String bills = 'bills_box_v1';
   static const String customerPhones = 'customer_phones_box_v1';
+  static const String customerContacts = 'customer_contacts_box_v1';
   static const String employees = 'employees_box_v1';
   static const String expenses = 'expenses_box_v1';
   static const String services = 'services_box_v1';

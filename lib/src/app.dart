@@ -1,10 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hairsaloon/src/features/auth/data/datasources/firebase_phone_otp_datasource.dart';
+import 'package:hairsaloon/src/features/auth/data/datasources/firestore_users_datasource.dart';
+import 'package:hairsaloon/src/features/auth/data/datasources/local_auth_session_datasource.dart';
+import 'package:hairsaloon/src/features/auth/data/repositories/firebase_auth_repository.dart';
+import 'package:hairsaloon/src/features/auth/domain/usecases/get_current_user.dart';
+import 'package:hairsaloon/src/features/auth/domain/usecases/has_session.dart';
+import 'package:hairsaloon/src/features/auth/domain/usecases/login_with_phone_password.dart';
+import 'package:hairsaloon/src/features/auth/domain/usecases/logout.dart';
+import 'package:hairsaloon/src/features/auth/domain/usecases/register_user.dart';
+import 'package:hairsaloon/src/features/auth/domain/usecases/send_registration_otp.dart';
+import 'package:hairsaloon/src/features/auth/domain/usecases/verify_registration_otp.dart';
+import 'package:hairsaloon/src/features/auth/presentation/account_profile_screen.dart';
+import 'package:hairsaloon/src/features/auth/presentation/auth_entry_screen.dart';
+import 'package:hairsaloon/src/features/auth/presentation/otp_screen.dart';
+import 'package:hairsaloon/src/features/auth/presentation/phone_password_login_screen.dart';
+import 'package:hairsaloon/src/features/auth/presentation/register_screen.dart';
+import 'package:hairsaloon/src/features/auth/presentation/state/auth_store.dart';
 import 'package:hairsaloon/src/core/storage/hive_bootstrap.dart';
 import 'package:hairsaloon/src/features/appointments/presentation/appointments_screen.dart';
 import 'package:hairsaloon/src/features/auth/presentation/business_registration_screen.dart';
-import 'package:hairsaloon/src/features/auth/presentation/login_screen.dart';
 import 'package:hairsaloon/src/features/billing/presentation/bill_details_screen.dart';
 import 'package:hairsaloon/src/features/billing/presentation/saved_bills_screen.dart';
 import 'package:hairsaloon/src/features/billing/data/repositories/hive_billing_repository.dart';
@@ -103,6 +119,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                 ChangeNotifierProvider<SettingsStore>.value(
                   value: bootstrap.settingsStore,
                 ),
+                ChangeNotifierProvider<AuthStore>.value(value: bootstrap.authStore),
               ],
               child: MaterialApp(
                 title: 'Business COMB',
@@ -116,8 +133,15 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                 initialRoute: AppRoutes.splash,
                 routes: {
                   AppRoutes.splash: (_) =>
-                      SplashScreen(hasSession: bootstrap.hasSession),
-                  AppRoutes.login: (_) => const LoginScreen(),
+                      SplashScreen(
+                        hasBusinessProfile: bootstrap.hasBusinessProfile,
+                        hasAuthSession: bootstrap.hasAuthSession,
+                      ),
+                  AppRoutes.login: (_) => const AuthEntryScreen(),
+                  AppRoutes.phonePasswordLogin: (_) =>
+                      const PhonePasswordLoginScreen(),
+                  AppRoutes.register: (_) => const RegisterScreen(),
+                  AppRoutes.otp: (_) => const OtpScreen(),
                   AppRoutes.businessRegistration: (_) =>
                       const BusinessRegistrationScreen(),
                   AppRoutes.homeShell: (_) => const DashboardShell(),
@@ -139,6 +163,7 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                   AppRoutes.customers: (_) => const CustomersScreen(),
                   AppRoutes.profileSettings: (_) =>
                       const ProfileSettingsScreen(),
+                  AppRoutes.accountProfile: (_) => const AccountProfileScreen(),
                   AppRoutes.savedBills: (_) => const SavedBillsScreen(),
                 },
                 onGenerateRoute: (settings) {
@@ -243,6 +268,30 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
       clearBusinessProfile: ClearBusinessProfile(repository),
     );
     await profileNotifier.load();
+
+    final session = LocalAuthSessionDataSource(prefs: prefs);
+    final otp = FirebasePhoneOtpDataSource();
+    final users = FirestoreUsersDataSource();
+    final authRepository = FirebaseAuthRepository(
+      session: session,
+      otp: otp,
+      users: users,
+    );
+    final authStore = AuthStore(
+      hasSession: HasSession(authRepository),
+      getCurrentUser: GetCurrentUser(authRepository),
+      sendRegistrationOtp: SendRegistrationOtp(authRepository),
+      verifyRegistrationOtp: VerifyRegistrationOtp(authRepository),
+      registerUser: RegisterUser(authRepository),
+      loginWithPhonePassword: LoginWithPhonePassword(authRepository),
+      logout: Logout(authRepository),
+    );
+
+    final hasAuthSession = await authStore.hasLocalSession();
+    if (hasAuthSession) {
+      await authStore.loadCurrentUser();
+    }
+
     return _AppBootstrap(
       profileNotifier: profileNotifier,
       billingStore: billingStore,
@@ -250,7 +299,9 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
       expensesStore: expensesStore,
       servicesStore: servicesStore,
       settingsStore: settingsStore,
-      hasSession: profileNotifier.profile != null,
+      authStore: authStore,
+      hasAuthSession: hasAuthSession,
+      hasBusinessProfile: profileNotifier.profile != null,
     );
   }
 }
@@ -263,7 +314,9 @@ class _AppBootstrap {
     required this.expensesStore,
     required this.servicesStore,
     required this.settingsStore,
-    required this.hasSession,
+    required this.authStore,
+    required this.hasAuthSession,
+    required this.hasBusinessProfile,
   });
 
   final BusinessProfileNotifier profileNotifier;
@@ -272,13 +325,20 @@ class _AppBootstrap {
   final ExpensesStore expensesStore;
   final ServicesStore servicesStore;
   final SettingsStore settingsStore;
-  final bool hasSession;
+  final AuthStore authStore;
+  final bool hasAuthSession;
+  final bool hasBusinessProfile;
 }
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key, required this.hasSession});
+  const SplashScreen({
+    super.key,
+    required this.hasAuthSession,
+    required this.hasBusinessProfile,
+  });
 
-  final bool hasSession;
+  final bool hasAuthSession;
+  final bool hasBusinessProfile;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -294,9 +354,12 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _navigate() async {
     await Future<void>.delayed(const Duration(seconds: 2));
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(
-      widget.hasSession ? AppRoutes.homeShell : AppRoutes.login,
-    );
+    final next = widget.hasAuthSession
+        ? (widget.hasBusinessProfile
+              ? AppRoutes.homeShell
+              : AppRoutes.businessRegistration)
+        : AppRoutes.login;
+    Navigator.of(context).pushReplacementNamed(next);
   }
 
   @override

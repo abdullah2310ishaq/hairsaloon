@@ -1,6 +1,9 @@
 class AppRoutes {
   static const splash = '/';
   static const login = '/login';
+  static const phonePasswordLogin = '/login/phone-password';
+  static const register = '/register';
+  static const otp = '/register/otp';
   static const businessRegistration = '/business-registration';
 
   static const homeShell = '/home';
@@ -26,6 +29,7 @@ class AppRoutes {
 
   static const customers = '/customers';
   static const profileSettings = '/profile-settings';
+  static const accountProfile = '/account-profile';
 
   static const expenseTypes = '/expense-types';
 }

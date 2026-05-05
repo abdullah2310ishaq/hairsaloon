@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:hairsaloon/src/core/storage/hive_boxes.dart';
 import 'package:hairsaloon/src/features/billing/domain/entities/bill.dart';
+import 'package:hairsaloon/src/features/billing/domain/entities/customer_contact.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,6 +19,7 @@ class HiveBootstrap {
     await Future.wait([
       Hive.openBox<Map>(HiveBoxes.bills),
       Hive.openBox<String>(HiveBoxes.customerPhones),
+      Hive.openBox<Map>(HiveBoxes.customerContacts),
       Hive.openBox<Map>(HiveBoxes.employees),
       Hive.openBox<Map>(HiveBoxes.expenses),
       Hive.openBox<Map>(HiveBoxes.services),
@@ -33,8 +35,9 @@ class HiveBootstrap {
 
     final billsBox = Hive.box<Map>(HiveBoxes.bills);
     final phonesBox = Hive.box<String>(HiveBoxes.customerPhones);
+    final contactsBox = Hive.box<Map>(HiveBoxes.customerContacts);
 
-    if (billsBox.isNotEmpty || phonesBox.isNotEmpty) {
+    if (billsBox.isNotEmpty || phonesBox.isNotEmpty || contactsBox.isNotEmpty) {
       await prefs.setBool(_billingMigrationFlag, true);
       return;
     }
@@ -62,13 +65,32 @@ class HiveBootstrap {
     for (final phone in rawPhones) {
       final normalized = phone.trim();
       if (normalized.isEmpty) continue;
-      await phonesBox.put(_normalizePhone(normalized), normalized);
+      final key = _normalizePhone(normalized);
+      await phonesBox.put(key, normalized);
+      await contactsBox.put(
+        key,
+        CustomerContact(name: '', phone: normalized).toJson(),
+      );
     }
 
     for (final bill in legacyBills) {
       final normalized = _normalizePhone(bill.customerPhone);
       if (normalized.isEmpty) continue;
       await phonesBox.put(normalized, bill.customerPhone.trim());
+      if (bill.customerName.trim().isNotEmpty) {
+        await contactsBox.put(
+          normalized,
+          CustomerContact(
+            name: bill.customerName.trim(),
+            phone: bill.customerPhone.trim(),
+          ).toJson(),
+        );
+      } else if (!contactsBox.containsKey(normalized)) {
+        await contactsBox.put(
+          normalized,
+          CustomerContact(name: '', phone: bill.customerPhone.trim()).toJson(),
+        );
+      }
     }
 
     final settingsBox = Hive.box<dynamic>(HiveBoxes.settings);
