@@ -24,12 +24,12 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final employeeName = employee.fullName.trim().toLowerCase();
-    final commissionPercent = _toDouble(employee.commission);
+    final employeeName = _norm(employee.fullName);
+    final commissionPercent = _commissionPercent(employee.commission);
     final bills = context
         .watch<BillingStore>()
         .bills
-        .where((bill) => bill.employeeName == employee.fullName)
+        .where((bill) => _norm(bill.employeeName) == employeeName)
         .where((bill) => _isInPeriod(bill.createdAt, anchorDate, period))
         .toList(growable: false);
     final expenses = context
@@ -37,142 +37,156 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
         .items
         .where(
           (item) =>
-              item.employeeName.trim().toLowerCase() == employeeName &&
+              _norm(item.employeeName) == employeeName &&
               item.status.trim().toLowerCase() == 'unpaid',
         )
         .where((item) => _isInPeriod(item.date, anchorDate, period))
         .toList(growable: false);
-    final dailyRows = _buildDailyRows(bills, commissionPercent);
-
-    final totalSales = bills.fold<double>(0, (sum, bill) => sum + bill.grandTotal);
-    final totalEarning = (totalSales * commissionPercent) / 100;
-    final totalCashSales = bills
-        .where((b) => b.paymentType.trim().toLowerCase() == 'cash')
-        .fold<double>(0, (sum, b) => sum + b.grandTotal);
-    final totalPaid = (totalCashSales * commissionPercent) / 100;
-    final totalCommissionDue = totalEarning - totalPaid;
-
-    final totalDue = expenses.fold<double>(
-      0.0,
-      (sum, item) => sum + item.amount,
-    );
-    final safeDue = totalDue < 0 ? 0.0 : totalDue;
-    final netDue = (totalCommissionDue - safeDue);
-    final safeNetDue = netDue < 0 ? 0.0 : netDue;
-
     final payoutBox = Hive.box<Map>(HiveBoxes.employeePayouts);
-    final payoutKey = _payoutKey(employee.id, period, anchorDate);
-    final settledRaw = payoutBox.get(payoutKey);
-    final isSettled = settledRaw != null;
-    final settledAt = isSettled
-        ? DateTime.tryParse((settledRaw['createdAt'] as String?) ?? '')
-        : null;
-    final settledAmount = isSettled ? (settledRaw['amount'] as num?)?.toDouble() ?? 0.0 : 0.0;
-    final dueAfterSettlement = isSettled ? 0.0 : safeNetDue;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: _TopSection(
-              employee: employee,
-              bills: bills,
-              totalEarning: totalEarning,
-              totalDue: safeDue,
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 60)),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: _dueAmountCard(
-                dueAfterSettlement,
-                subtitle: _settlementSubtitle(isSettled, settledAt, settledAmount),
-                onSettleUp: (dueAfterSettlement <= 0)
-                    ? null
-                    : () => _settleUpPayout(
-                          context: context,
-                          payoutKey: payoutKey,
-                          employeeId: employee.id,
-                          employeeName: employee.fullName,
-                          period: period,
-                          anchorDate: anchorDate,
-                          amount: dueAfterSettlement,
-                        ),
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 12)),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-              child: Text(
-                _dailyTitle(period),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 20,
+      body: ValueListenableBuilder(
+        valueListenable: payoutBox.listenable(),
+        builder: (context, _, __) {
+          final dailyRows = _buildDailyRows(
+            employeeId: employee.id,
+            bills: bills,
+            unpaidExpenses: expenses,
+            commissionPercent: commissionPercent,
+            payoutBox: payoutBox,
+          );
+
+          final totalSales = bills.fold<double>(
+            0,
+            (sum, bill) => sum + bill.grandTotal,
+          );
+          final totalEarning = (totalSales * commissionPercent) / 100;
+          final totalExpenseCut = dailyRows.fold<double>(
+            0,
+            (sum, row) => sum + row.expenseCut,
+          );
+          final totalDue = dailyRows.fold<double>(
+            0,
+            (sum, row) => sum + row.dueAmount,
+          );
+          final totalPaid = dailyRows.fold<double>(
+            0,
+            (sum, row) => sum + row.paidAmount,
+          );
+
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _TopSection(
+                  employee: employee,
+                  bills: bills,
+                  totalEarning: totalEarning,
+                  totalDue: totalExpenseCut,
                 ),
               ),
-            ),
-          ),
-          if (dailyRows.isEmpty)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: _EmptyStateCard(),
+              const SliverToBoxAdapter(child: SizedBox(height: 60)),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: _dueAmountCard(
+                    totalDue,
+                    subtitle: 'Paid: ${_formatCurrency(totalPaid)}',
+                    onSettleUp: totalDue <= 0
+                        ? null
+                        : () => _settleAllDays(
+                            context: context,
+                            employeeId: employee.id,
+                            employeeName: employee.fullName,
+                            rows: dailyRows,
+                            payoutBox: payoutBox,
+                          ),
+                  ),
+                ),
               ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-              sliver: SliverList.builder(
-                itemCount: dailyRows.length,
-                itemBuilder: (context, index) {
-                  final row = dailyRows[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _DailyIncomeTile(row: row),
-                  );
-                },
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                  child: Text(
+                    _dailyTitle(period),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
               ),
-            ),
-          const SliverToBoxAdapter(child: SizedBox(height: 8)),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-              child: Text(
-                'Bills',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              if (dailyRows.isEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: _EmptyStateCard(),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                  sliver: SliverList.builder(
+                    itemCount: dailyRows.length,
+                    itemBuilder: (context, index) {
+                      final row = dailyRows[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _DailyIncomeTile(
+                          row: row,
+                          onSettleUp: row.dueAmount <= 0
+                              ? null
+                              : () => _settleDay(
+                                  context: context,
+                                  employeeId: employee.id,
+                                  employeeName: employee.fullName,
+                                  row: row,
+                                  payoutBox: payoutBox,
+                                ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 8)),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  child: Text(
+                    'Bills',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w800,
                     ),
+                  ),
+                ),
               ),
-            ),
-          ),
-          if (bills.isEmpty)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: _EmptyStateCard(),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-              sliver: SliverList.builder(
-                itemCount: bills.length,
-                itemBuilder: (context, index) {
-                  final bill = bills[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _BillTile(bill: bill),
-                  );
-                },
-              ),
-            ),
-        ],
+              if (bills.isEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: _EmptyStateCard(),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                  sliver: SliverList.builder(
+                    itemCount: bills.length,
+                    itemBuilder: (context, index) {
+                      final bill = bills[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _BillTile(bill: bill),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -183,42 +197,78 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
     return double.tryParse(normalized) ?? 0;
   }
 
-  static List<_DailyIncomeRow> _buildDailyRows(
-    List<Bill> bills,
-    double commissionPercent,
-  ) {
-    final grouped = <DateTime, _DailyAccumulator>{};
+  static double _commissionPercent(String? value) {
+    if (value == null || value.trim().isEmpty) return 100;
+    final parsed = _toDouble(value);
+    return parsed <= 0 ? 100 : parsed;
+  }
 
+  static String _norm(String value) => value.trim().toLowerCase();
+
+  static List<_DailyIncomeRow> _buildDailyRows({
+    required String employeeId,
+    required List<Bill> bills,
+    required List<dynamic> unpaidExpenses,
+    required double commissionPercent,
+    required Box<Map> payoutBox,
+  }) {
+    final salesByDay = <DateTime, double>{};
     for (final bill in bills) {
-      final date = DateTime(
+      final day = DateTime(
         bill.createdAt.year,
         bill.createdAt.month,
         bill.createdAt.day,
       );
-      final state = grouped.putIfAbsent(date, _DailyAccumulator.new);
-      state.totalSales += bill.grandTotal;
-      if (bill.paymentType.trim().toLowerCase() == 'cash') {
-        state.cashSales += bill.grandTotal;
-      }
+      salesByDay.update(
+        day,
+        (v) => v + bill.grandTotal,
+        ifAbsent: () => bill.grandTotal,
+      );
     }
 
-    final rows = grouped.entries
-        .map((entry) {
-          final earningAmount =
-              (entry.value.totalSales * commissionPercent) / 100;
-          final paidAmount = (entry.value.cashSales * commissionPercent) / 100;
-          final dueAmount = earningAmount - paidAmount;
+    final expenseByDay = <DateTime, double>{};
+    for (final item in unpaidExpenses) {
+      final date = item.date as DateTime;
+      final day = DateTime(date.year, date.month, date.day);
+      final amount = (item.amount as double?) ?? 0.0;
+      expenseByDay.update(day, (v) => v + amount, ifAbsent: () => amount);
+    }
+
+    final days = <DateTime>{
+      ...salesByDay.keys,
+      ...expenseByDay.keys,
+    }.toList(growable: false);
+    days.sort((a, b) => b.compareTo(a));
+
+    return days
+        .map((day) {
+          final sales = salesByDay[day] ?? 0.0;
+          final earning = (sales * commissionPercent) / 100;
+          final expenseCut = expenseByDay[day] ?? 0.0;
+          final netDue = (earning - expenseCut);
+          final due = netDue < 0 ? 0.0 : netDue;
+
+          final key = _dayPayoutKey(employeeId, day);
+          final raw = payoutBox.get(key);
+          final isSettled = raw != null;
+          final settledAmount = isSettled
+              ? (raw['amount'] as num?)?.toDouble() ?? 0.0
+              : 0.0;
+          final settledAt = isSettled
+              ? DateTime.tryParse((raw['createdAt'] as String?) ?? '')
+              : null;
+
           return _DailyIncomeRow(
-            date: entry.key,
-            earningAmount: earningAmount,
-            paidAmount: paidAmount,
-            dueAmount: dueAmount < 0 ? 0.0 : dueAmount,
+            date: day,
+            earningAmount: earning,
+            paidAmount: isSettled ? settledAmount : 0.0,
+            dueAmount: isSettled ? 0.0 : due,
+            expenseCut: expenseCut,
+            payoutKey: key,
+            settledAt: settledAt,
           );
         })
         .toList(growable: false);
-
-    rows.sort((a, b) => b.date.compareTo(a.date));
-    return rows;
   }
 
   static String _dailyTitle(FinancePeriod period) {
@@ -232,14 +282,21 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
     }
   }
 
-  static bool _isInPeriod(DateTime date, DateTime anchor, FinancePeriod period) {
+  static bool _isInPeriod(
+    DateTime date,
+    DateTime anchor,
+    FinancePeriod period,
+  ) {
     final target = DateTime(date.year, date.month, date.day);
     switch (period) {
       case FinancePeriod.daily:
         return target == DateTime(anchor.year, anchor.month, anchor.day);
       case FinancePeriod.weekly:
-        final start = DateTime(anchor.year, anchor.month, anchor.day)
-            .subtract(Duration(days: anchor.weekday - 1));
+        final start = DateTime(
+          anchor.year,
+          anchor.month,
+          anchor.day,
+        ).subtract(Duration(days: anchor.weekday - 1));
         final end = start.add(const Duration(days: 6));
         return !target.isBefore(start) && !target.isAfter(end);
       case FinancePeriod.monthly:
@@ -247,24 +304,9 @@ class EmployeeIncomeDetailScreen extends StatelessWidget {
     }
   }
 
-  static String _payoutKey(String employeeId, FinancePeriod period, DateTime anchor) {
-    final day = DateTime(anchor.year, anchor.month, anchor.day);
-    switch (period) {
-      case FinancePeriod.daily:
-        return 'payout:$employeeId:daily:${day.toIso8601String()}';
-      case FinancePeriod.weekly:
-        final start = day.subtract(Duration(days: day.weekday - 1));
-        return 'payout:$employeeId:weekly:${start.toIso8601String()}';
-      case FinancePeriod.monthly:
-        final month = DateTime(anchor.year, anchor.month, 1);
-        return 'payout:$employeeId:monthly:${month.toIso8601String()}';
-    }
-  }
-
-  static String? _settlementSubtitle(bool isSettled, DateTime? settledAt, double amount) {
-    if (!isSettled) return null;
-    final when = settledAt == null ? '—' : _formatDate(settledAt);
-    return 'Settled: ${_formatCurrency(amount)} on $when';
+  static String _dayPayoutKey(String employeeId, DateTime day) {
+    final d = DateTime(day.year, day.month, day.day);
+    return 'payout:$employeeId:day:${d.toIso8601String()}';
   }
 }
 
@@ -494,11 +536,18 @@ Widget _dueAmountCard(
           height: 34,
           child: FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: isSettled ? const Color(0xFFC5C5C5) : AppColors.primary,
+              backgroundColor: isSettled
+                  ? const Color(0xFFC5C5C5)
+                  : AppColors.primary,
               foregroundColor: AppColors.textPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             onPressed: isSettled ? null : onSettleUp,
             child: const Text('Settle Up'),
@@ -509,17 +558,86 @@ Widget _dueAmountCard(
   );
 }
 
-Future<void> _settleUpPayout({
+Future<void> _settleDay({
   required BuildContext context,
-  required String payoutKey,
   required String employeeId,
   required String employeeName,
-  required FinancePeriod period,
-  required DateTime anchorDate,
-  required double amount,
+  required _DailyIncomeRow row,
+  required Box<Map> payoutBox,
 }) async {
-  final safeAmount = amount < 0 ? 0.0 : amount;
+  final safeAmount = row.dueAmount < 0 ? 0.0 : row.dueAmount;
   if (safeAmount <= 0) return;
+
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: AppColors.primary,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      title: const Text(
+        'Settle Up (Daily)',
+        style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
+      ),
+      content: Text(
+        'Employee: ${employeeName.trim()}\nDate: ${_formatDate(row.date)}\n\nPay: ${_formatCurrency(safeAmount)}',
+        style: const TextStyle(
+          color: Colors.black87,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          style: TextButton.styleFrom(foregroundColor: Colors.black87),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text(
+            'Settle',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
+    ),
+  );
+  if (confirm != true) return;
+
+  await payoutBox.put(row.payoutKey, <String, dynamic>{
+    'id': row.payoutKey,
+    'employeeId': employeeId,
+    'employeeName': employeeName.trim(),
+    'period': 'day',
+    'anchorDate': DateTime(
+      row.date.year,
+      row.date.month,
+      row.date.day,
+    ).toIso8601String(),
+    'amount': safeAmount,
+    'createdAt': DateTime.now().toIso8601String(),
+  });
+}
+
+Future<void> _settleAllDays({
+  required BuildContext context,
+  required String employeeId,
+  required String employeeName,
+  required List<_DailyIncomeRow> rows,
+  required Box<Map> payoutBox,
+}) async {
+  final dueRows = rows.where((r) => r.dueAmount > 0).toList(growable: false);
+  if (dueRows.isEmpty) return;
+  final total = dueRows.fold<double>(0, (sum, r) => sum + r.dueAmount);
 
   final confirm = await showDialog<bool>(
     context: context,
@@ -532,45 +650,62 @@ Future<void> _settleUpPayout({
         style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
       ),
       content: Text(
-        'Mark ${employeeName.trim()} payout as settled?\n\nAmount: ${_formatCurrency(safeAmount)}',
-        style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+        'Settle all due days for ${employeeName.trim()}?\n\nTotal: ${_formatCurrency(total)}',
+        style: const TextStyle(
+          color: Colors.black87,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
           style: TextButton.styleFrom(foregroundColor: Colors.black87),
-          child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w700)),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
         FilledButton(
           style: FilledButton.styleFrom(
             backgroundColor: Colors.black,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
           ),
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Settle', style: TextStyle(fontWeight: FontWeight.w800)),
+          child: const Text(
+            'Settle All',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
         ),
       ],
     ),
   );
   if (confirm != true) return;
 
-  final box = Hive.box<Map>(HiveBoxes.employeePayouts);
-  await box.put(payoutKey, <String, dynamic>{
-    'id': payoutKey,
-    'employeeId': employeeId,
-    'employeeName': employeeName.trim(),
-    'period': period.name,
-    'anchorDate': DateTime(anchorDate.year, anchorDate.month, anchorDate.day).toIso8601String(),
-    'amount': safeAmount,
-    'createdAt': DateTime.now().toIso8601String(),
-  });
+  for (final row in dueRows) {
+    await payoutBox.put(row.payoutKey, <String, dynamic>{
+      'id': row.payoutKey,
+      'employeeId': employeeId,
+      'employeeName': employeeName.trim(),
+      'period': 'day',
+      'anchorDate': DateTime(
+        row.date.year,
+        row.date.month,
+        row.date.day,
+      ).toIso8601String(),
+      'amount': row.dueAmount,
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+  }
 }
 
 class _DailyIncomeTile extends StatelessWidget {
-  const _DailyIncomeTile({required this.row});
+  const _DailyIncomeTile({required this.row, required this.onSettleUp});
 
   final _DailyIncomeRow row;
+  final VoidCallback? onSettleUp;
 
   @override
   Widget build(BuildContext context) {
@@ -622,21 +757,22 @@ class _DailyIncomeTile extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  onPressed: isSettled
-                      ? null
-                      : () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Settlement flow can be connected here.',
-                              ),
-                            ),
-                          );
-                        },
+                  onPressed: isSettled ? null : onSettleUp,
                   child: const Text('Settle Up'),
                 ),
               ),
               const SizedBox(height: 6),
+              if (row.expenseCut > 0)
+                Text(
+                  'Cut: ${_formatCurrency(row.expenseCut)}',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: AppColors.danger,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              if (row.expenseCut > 0) const SizedBox(height: 4),
               Text(
                 _formatDate(row.date),
                 textAlign: TextAlign.right,
@@ -727,14 +863,15 @@ class _BillTile extends StatelessWidget {
     final customerLabel = bill.customerName.trim().isNotEmpty
         ? bill.customerName.trim()
         : (bill.customerPhone.trim().isNotEmpty
-            ? bill.customerPhone.trim()
-            : 'Walk-in Customer');
+              ? bill.customerPhone.trim()
+              : 'Walk-in Customer');
     final dateText =
         '${bill.createdAt.day.toString().padLeft(2, '0')}-${bill.createdAt.month.toString().padLeft(2, '0')}-${bill.createdAt.year}';
     final timeText =
         '${bill.createdAt.hour.toString().padLeft(2, '0')}:${bill.createdAt.minute.toString().padLeft(2, '0')}';
-    final firstService =
-        bill.lines.isNotEmpty ? bill.lines.first.serviceName : 'No service';
+    final firstService = bill.lines.isNotEmpty
+        ? bill.lines.first.serviceName
+        : 'No service';
 
     return Container(
       padding: const EdgeInsets.all(10),
@@ -798,23 +935,24 @@ class _BillTile extends StatelessWidget {
   }
 }
 
-class _DailyAccumulator {
-  double totalSales = 0;
-  double cashSales = 0;
-}
-
 class _DailyIncomeRow {
   const _DailyIncomeRow({
     required this.date,
     required this.earningAmount,
     required this.paidAmount,
     required this.dueAmount,
+    required this.expenseCut,
+    required this.payoutKey,
+    required this.settledAt,
   });
 
   final DateTime date;
   final double earningAmount;
   final double paidAmount;
   final double dueAmount;
+  final double expenseCut;
+  final String payoutKey;
+  final DateTime? settledAt;
 }
 
 String _formatCurrency(double value) {

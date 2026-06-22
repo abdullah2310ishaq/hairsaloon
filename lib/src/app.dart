@@ -55,7 +55,10 @@ import 'package:hairsaloon/src/features/services/presentation/new_service_screen
 import 'package:hairsaloon/src/features/services/presentation/categories_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/service_list_screen.dart';
 import 'package:hairsaloon/src/features/services/presentation/subcategories_screen.dart';
+import 'package:hairsaloon/src/features/sync/data/repositories/firestore_sync_repository.dart';
+import 'package:hairsaloon/src/features/sync/presentation/state/sync_store.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
+import 'package:hairsaloon/src/core/services/toast_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -122,10 +125,27 @@ class _BusinessCombAppState extends State<BusinessCombApp> {
                   value: bootstrap.settingsStore,
                 ),
                 ChangeNotifierProvider<AuthStore>.value(value: bootstrap.authStore),
+                ChangeNotifierProxyProvider2<AuthStore, BusinessProfileNotifier, SyncStore>(
+                  create: (_) => SyncStore(
+                    repository: FirestoreSyncRepository(
+                      firestore: FirebaseFirestore.instance,
+                    ),
+                  ),
+                  update: (_, auth, profile, store) {
+                    store ??= SyncStore(
+                      repository: FirestoreSyncRepository(
+                        firestore: FirebaseFirestore.instance,
+                      ),
+                    );
+                    store.updateContext(auth: auth, profile: profile);
+                    return store;
+                  },
+                ),
               ],
               child: MaterialApp(
                 title: 'Business COMB',
                 debugShowCheckedModeBanner: false,
+                navigatorKey: ToastService.navigatorKey,
                 theme: ThemeData(
                   colorScheme: ColorScheme.fromSeed(
                     seedColor: AppColors.primary,

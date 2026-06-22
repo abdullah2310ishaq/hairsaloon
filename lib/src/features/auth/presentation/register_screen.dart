@@ -30,6 +30,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneCtrl = TextEditingController(text: '+92 ');
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  bool _showPassword = false;
+  bool _showConfirmPassword = false;
 
   @override
   void dispose() {
@@ -62,10 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.watch<AuthStore>();
     final error = auth.error;
 
-    InputDecoration fieldDecoration({
-      required String hint,
-      Widget? prefix,
-    }) {
+    InputDecoration fieldDecoration({required String hint, Widget? prefix}) {
       final radius = BorderRadius.all(Radius.circular(14.r));
       return InputDecoration(
         hintText: hint,
@@ -99,17 +98,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     Widget label(String text) => Padding(
-          padding: EdgeInsets.only(bottom: 8.h),
-          child: Text(
-            text,
-            style: TextStyle(
-              color: _C.textSecondary,
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.4,
-            ),
-          ),
-        );
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: _C.textSecondary,
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.4,
+        ),
+      ),
+    );
 
     return Theme(
       data: ThemeData.light().copyWith(
@@ -204,7 +203,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: (v) {
                         final val = (v ?? '').trim();
                         if (val.isEmpty || val == '+92') return 'Required';
-                        if (!val.startsWith('+92')) return 'Must start with +92';
+                        if (!val.startsWith('+92'))
+                          return 'Must start with +92';
                         return null;
                       },
                     ),
@@ -214,7 +214,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     padding: EdgeInsets.only(bottom: 16.h),
                     child: TextFormField(
                       controller: _passwordCtrl,
-                      obscureText: true,
+                      obscureText: !_showPassword,
                       style: TextStyle(color: _C.textPrimary, fontSize: 14.sp),
                       decoration: fieldDecoration(
                         hint: 'Create a password',
@@ -222,6 +222,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           Icons.lock_rounded,
                           color: _C.textSecondary,
                           size: 20.r,
+                        ),
+                      ).copyWith(
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(() => _showPassword = !_showPassword),
+                          icon: Icon(
+                            _showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                            color: _C.textSecondary,
+                            size: 20.r,
+                          ),
                         ),
                       ),
                       validator: (v) {
@@ -237,7 +246,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     padding: EdgeInsets.only(bottom: 16.h),
                     child: TextFormField(
                       controller: _confirmCtrl,
-                      obscureText: true,
+                      obscureText: !_showConfirmPassword,
                       style: TextStyle(color: _C.textPrimary, fontSize: 14.sp),
                       decoration: fieldDecoration(
                         hint: 'Re-enter password',
@@ -246,11 +255,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           color: _C.textSecondary,
                           size: 20.r,
                         ),
+                      ).copyWith(
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(
+                            () => _showConfirmPassword = !_showConfirmPassword,
+                          ),
+                          icon: Icon(
+                            _showConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                            color: _C.textSecondary,
+                            size: 20.r,
+                          ),
+                        ),
                       ),
                       validator: (v) {
                         final val = (v ?? '').trim();
                         if (val.isEmpty) return 'Required';
-                        if (val != _passwordCtrl.text) return 'Passwords do not match';
+                        if (val != _passwordCtrl.text)
+                          return 'Passwords do not match';
                         return null;
                       },
                     ),
@@ -260,21 +281,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     width: double.infinity,
                     height: 58.h,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _C.lime,
-                        foregroundColor: Colors.black,
-                        elevation: 0,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.r),
-                        ),
-                      ).copyWith(
-                        overlayColor: WidgetStateProperty.resolveWith(
-                          (states) => states.contains(WidgetState.pressed)
-                              ? _C.limeDeep.withOpacity(0.5)
-                              : null,
-                        ),
-                      ),
+                      style:
+                          ElevatedButton.styleFrom(
+                            backgroundColor: _C.lime,
+                            foregroundColor: Colors.black,
+                            elevation: 0,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.r),
+                            ),
+                          ).copyWith(
+                            overlayColor: WidgetStateProperty.resolveWith(
+                              (states) => states.contains(WidgetState.pressed)
+                                  ? _C.limeDeep.withOpacity(0.5)
+                                  : null,
+                            ),
+                          ),
                       onPressed: auth.isLoading ? null : _submit,
                       child: auth.isLoading
                           ? const SizedBox(
@@ -283,7 +305,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Text(
-                              'Send OTP',
+                              'Register',
                               style: TextStyle(
                                 fontSize: 15.sp,
                                 fontWeight: FontWeight.w700,

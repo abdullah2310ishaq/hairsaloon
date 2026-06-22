@@ -164,7 +164,7 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
     for (final bill in bills) {
       if (!_periodContains(bill.createdAt, now, period)) continue;
       earningsByEmployee.update(
-        bill.employeeName,
+        _norm(bill.employeeName),
         (existing) => existing + bill.grandTotal,
         ifAbsent: () => bill.grandTotal,
       );
@@ -173,8 +173,8 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
     final rows = employees
         .map(
           (employee) {
-            final sales = earningsByEmployee[employee.fullName] ?? 0;
-            final commissionPercent = _toDouble(employee.commission);
+            final sales = earningsByEmployee[_norm(employee.fullName)] ?? 0;
+            final commissionPercent = _commissionPercent(employee.commission);
             final earning = (sales * commissionPercent) / 100;
             return _EmployeeIncomeRow(
               employee: employee,
@@ -194,18 +194,70 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
     return double.tryParse(normalized) ?? 0;
   }
 
-  static String _payoutKey(String employeeId, FinancePeriod period, DateTime anchor) {
-    final day = DateTime(anchor.year, anchor.month, anchor.day);
-    switch (period) {
-      case FinancePeriod.daily:
-        return 'payout:$employeeId:daily:${day.toIso8601String()}';
-      case FinancePeriod.weekly:
-        final start = day.subtract(Duration(days: day.weekday - 1));
-        return 'payout:$employeeId:weekly:${start.toIso8601String()}';
-      case FinancePeriod.monthly:
-        final month = DateTime(anchor.year, anchor.month, 1);
-        return 'payout:$employeeId:monthly:${month.toIso8601String()}';
+  static double _commissionPercent(String? value) {
+    if (value == null || value.trim().isEmpty) return 100;
+    final parsed = _toDouble(value);
+    return parsed <= 0 ? 100 : parsed;
+  }
+
+  static String _norm(String value) {
+    return value.trim().toLowerCase();
+  }
+
+  static double _netDueForEmployee({
+    required EmployeeItem employee,
+    required List<Bill> bills,
+    required List<dynamic> expenses,
+    required DateTime anchor,
+    required FinancePeriod period,
+    required Box<Map> payoutBox,
+    required double earningEstimate,
+  }) {
+    final employeeName = _norm(employee.fullName);
+    final commissionPercent = _commissionPercent(employee.commission);
+
+    final salesByDay = <DateTime, double>{};
+    for (final bill in bills) {
+      if (_norm(bill.employeeName) != employeeName) continue;
+      if (!_periodContains(bill.createdAt, anchor, period)) continue;
+      final day = DateTime(bill.createdAt.year, bill.createdAt.month, bill.createdAt.day);
+      salesByDay.update(day, (v) => v + bill.grandTotal, ifAbsent: () => bill.grandTotal);
     }
+
+    final expenseByDay = <DateTime, double>{};
+    for (final e in expenses) {
+      final emp = (e.employeeName as String?) ?? '';
+      if (_norm(emp) != employeeName) continue;
+      final status = (e.status as String?) ?? '';
+      if (status.trim().toLowerCase() != 'unpaid') continue;
+      final date = e.date as DateTime;
+      if (!_periodContains(date, anchor, period)) continue;
+      final day = DateTime(date.year, date.month, date.day);
+      final amount = (e.amount as double?) ?? 0.0;
+      expenseByDay.update(day, (v) => v + amount, ifAbsent: () => amount);
+    }
+
+    final days = <DateTime>{...salesByDay.keys, ...expenseByDay.keys}.toList(growable: false);
+    if (days.isEmpty) {
+      // Fallback to old number if there were no day groups.
+      final safe = earningEstimate < 0 ? 0.0 : earningEstimate;
+      return safe;
+    }
+
+    double totalDue = 0.0;
+    for (final day in days) {
+      final sales = salesByDay[day] ?? 0.0;
+      final earning = (sales * commissionPercent) / 100;
+      final cut = expenseByDay[day] ?? 0.0;
+      final net = earning - cut;
+      final due = net < 0 ? 0.0 : net;
+      final payoutKey = 'payout:${employee.id}:day:${DateTime(day.year, day.month, day.day).toIso8601String()}';
+      final isSettled = payoutBox.get(payoutKey) != null;
+      if (!isSettled) {
+        totalDue += due;
+      }
+    }
+    return totalDue < 0 ? 0.0 : totalDue;
   }
 
   bool _isInSelectedPeriod(DateTime date) {
@@ -496,16 +548,6 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
   Widget _employeeIncomeTile(BuildContext context, _EmployeeIncomeRow row) {
     final expenses = context.watch<ExpensesStore>().items;
     final payoutBox = Hive.box<Map>(HiveBoxes.employeePayouts);
-    final payoutKey = _payoutKey(row.employee.id, _period, _selectedDate);
-    final isSettled = payoutBox.get(payoutKey) != null;
-
-    final unpaidExpenseTotal = expenses
-        .where((e) => e.employeeName == row.employee.fullName)
-        .where((e) => e.status.trim().toLowerCase() == 'unpaid')
-        .where((e) => _periodContains(e.date, _selectedDate, _period))
-        .fold<double>(0, (sum, e) => sum + e.amount);
-    final netDue = (row.todayEarning - unpaidExpenseTotal);
-    final safeNetDue = (isSettled || netDue < 0) ? 0.0 : netDue;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -571,22 +613,42 @@ class _FinanceOverviewScreenState extends State<FinanceOverviewScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      isSettled ? 'Settled' : 'Net Due',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _formatCurrency(safeNetDue),
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    ValueListenableBuilder(
+                      valueListenable: payoutBox.listenable(),
+                      builder: (context, _, __) {
+                        final due = _netDueForEmployee(
+                          employee: row.employee,
+                          bills: context.read<BillingStore>().bills,
+                          expenses: expenses,
+                          anchor: _selectedDate,
+                          period: _period,
+                          payoutBox: payoutBox,
+                          earningEstimate: row.todayEarning,
+                        );
+                        final isSettled = due <= 0;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              isSettled ? 'Settled' : 'Net Due',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _formatCurrency(due),
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),

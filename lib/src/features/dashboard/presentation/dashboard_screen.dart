@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hairsaloon/src/features/business_profile/presentation/state/business_profile_notifier.dart';
 import 'package:hairsaloon/src/features/router/app_routes.dart';
+import 'package:hairsaloon/src/features/sync/presentation/state/sync_store.dart';
+import 'package:hairsaloon/src/features/sync/presentation/sync_modal.dart';
 import 'package:hairsaloon/src/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -26,9 +28,10 @@ class DashboardScreen extends StatelessWidget {
         ? '${profile.area}, ${profile.city}'
         : 'G-11 Markaz, Islamabad';
 
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
+    return SyncOverlay(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
         // ── Header ────────────────────────────────────────────────────────
         Container(
           color: AppColors.primary,
@@ -46,7 +49,7 @@ class DashboardScreen extends StatelessWidget {
                       width: 40.w,
                       height: 40.w,
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.12),
+                        color: Colors.black.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Icon(
@@ -62,7 +65,7 @@ class DashboardScreen extends StatelessWidget {
                 Text(
                   'WELCOME BACK',
                   style: TextStyle(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     fontSize: 11.sp,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1.4,
@@ -87,13 +90,13 @@ class DashboardScreen extends StatelessWidget {
                     Icon(
                       CupertinoIcons.location_solid,
                       size: 12.r,
-                      color: Colors.black.withOpacity(0.45),
+                      color: Colors.black.withValues(alpha: 0.45),
                     ),
                     SizedBox(width: 4.w),
                     Text(
                       address,
                       style: TextStyle(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha: 0.5),
                         fontSize: 12.5.sp,
                         fontWeight: FontWeight.w400,
                         letterSpacing: 0.1,
@@ -112,10 +115,10 @@ class DashboardScreen extends StatelessWidget {
           child: Column(
             children: [
               GridView.count(
-                crossAxisCount: 1,
+                crossAxisCount: 2,
                 crossAxisSpacing: 14.w,
                 mainAxisSpacing: 14.h,
-                childAspectRatio: 3.2,
+                childAspectRatio: 1.18,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
@@ -125,6 +128,11 @@ class DashboardScreen extends StatelessWidget {
                     onTap: () => Navigator.of(
                       context,
                     ).pushNamed(AppRoutes.financeOverview),
+                  ),
+                  _DashboardTile(
+                    label: 'Sync Data',
+                    icon: CupertinoIcons.cloud_upload,
+                    onTap: () => context.read<SyncStore>().startSync(),
                   ),
                 ],
               ),
@@ -165,7 +173,8 @@ class DashboardScreen extends StatelessWidget {
             ],
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -177,12 +186,14 @@ class DashboardScreen extends StatelessWidget {
 class _DashboardTile extends StatelessWidget {
   const _DashboardTile({
     required this.label,
-    required this.assetPath,
+    this.assetPath,
+    this.icon,
     required this.onTap,
   });
 
   final String label;
-  final String assetPath;
+  final String? assetPath;
+  final IconData? icon;
   final VoidCallback onTap;
 
   @override
@@ -196,15 +207,16 @@ class _DashboardTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: tileSurface,
           borderRadius: BorderRadius.circular(radius),
+          border: Border.all(color: Colors.black, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 16.r,
               spreadRadius: 0,
               offset: Offset(0, 4.h),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 4.r,
               spreadRadius: 0,
               offset: Offset(0, 1.h),
@@ -228,7 +240,15 @@ class _DashboardTile extends StatelessWidget {
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8.r),
-                      child: Image.asset(assetPath, fit: BoxFit.contain),
+                      child: icon != null
+                          ? FittedBox(
+                              fit: BoxFit.contain,
+                              child: Icon(
+                                icon,
+                                color: Colors.black,
+                              ),
+                            )
+                          : Image.asset(assetPath!, fit: BoxFit.contain),
                     ),
                   ),
                   SizedBox(height: 14.h),
@@ -237,7 +257,7 @@ class _DashboardTile extends StatelessWidget {
                     label,
                     style: TextStyle(
                       fontSize: 15.5.sp,
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
                       letterSpacing: -0.2,
                       height: 1.1,
